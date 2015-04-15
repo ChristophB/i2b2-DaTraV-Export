@@ -1,8 +1,8 @@
 // this file contains a list of all files that need to be loaded dynamically for this plugin
 // every file in this list will be loaded after the plugin's Init function is called
 {
-	files:[ "ExampTabs_ctrlr.js" ],
-	css:[ "vwExampTabs.css" ],
+	files:[ "ExportSQL_ctrlr.js" ],
+	css:[ "vwExportSQL.css" ],
 	config: {
 		// additional configuration variables that are set by the system
 		short_name: "Tabs and DragDrop",
@@ -15,7 +15,7 @@
 			standardTabs: true, // this means the plugin uses standard tabs at top
 			html: {
 				source: 'injected_screens.html',
-				mainDivId: 'ExampTabs-mainDiv'
+				mainDivId: 'ExportSQL-mainDiv'
 			}
 		}
 	}
