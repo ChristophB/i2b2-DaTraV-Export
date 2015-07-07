@@ -1,67 +1,53 @@
-/**
- * @projectDescription	Example using tabs and SDX DragDrop integration (controller code).
- * @inherits	i2b2
- * @namespace	i2b2.ExampTabs
- * @author	Nick Benik, Griffin Weber MD PhD
- * @version 	1.3
- * ----------------------------------------------------------------------------------------
- * updated 9-28-08: 	Initial Launch [Nick Benik] 
- * updated 10-30-08:	GUI revisions [Griffin Weber] 
- */
-
+/* this function is called after the HTML is loaded into the viewer DIV */
 i2b2.ExportSQL.Init = function(loadedDiv) {
-	// this function is called after the HTML is loaded into the viewer DIV
-	
-	// register DIV as valid DragDrop target for Patient Record Sets (PRS) objects
-	var divName = "ExportSQL-PRSDROP";
-	// register for drag drop events for the following data types: CONCPT, QM, QI, PRS, PRC
-	var op_trgt = {dropTarget:true};
-	i2b2.sdx.Master.AttachType(divName, 'QM', op_trgt);	
-	// route event callbacks to a single drop event handler used by this plugin
-	var eventRouterFunc = (function(sdxData) { i2b2.ExportSQL.doDrop(sdxData); });
-	i2b2.sdx.Master.setHandlerCustom(divName, 'QM', 'DropHandler', eventRouterFunc);
+    // register DIV as valid DragDrop target for Query Master (QM) objects
+    var divName = 'ExportSQL-QMDROP';
+    // register for drag drop events for the following data types: QM, (QI?)
+    var op_trgt = {dropTarget:true};
+    i2b2.sdx.Master.AttachType(divName, 'QM', op_trgt);	
+    // route event callbacks to a single drop event handler used by this plugin
+    var eventRouterFunc = (function(sdxData) { i2b2.ExportSQL.doDrop(sdxData); });
+    i2b2.sdx.Master.setHandlerCustom(divName, 'QM', 'DropHandler', eventRouterFunc);
 
-	// manage YUI tabs
-	var cfgObj = {activeIndex : 0};
-	this.yuiTabs = new YAHOO.widget.TabView("ExportSQL-TABS", cfgObj);
-	this.yuiTabs.on('activeTabChange', function(ev) { 
-		//Tabs have changed 
-		if (ev.newValue.get('id')=="ExportSQL-TAB1") {
-			// user switched to Results tab
-			if (i2b2.ExportSQL.model.currentRec) { 
-				// gather statistics only if we have data
-				if (i2b2.ExportSQL.model.dirtyResultsData) {
-					// recalculate the results only if the input data has changed
-					i2b2.ExportSQL.getResults();
-				}
-			}
+    // manage YUI tabs
+    var cfgObj = {activeIndex : 0};
+    this.yuiTabs = new YAHOO.widget.TabView('ExportSQL-TABS', cfgObj);
+    this.yuiTabs.on('activeTabChange', function(ev) { 
+	//Tabs have changed 
+	if (ev.newValue.get('id')=='ExportSQL-TAB1') {
+	    // user switched to Results tab
+	    if (i2b2.ExportSQL.model.currentRec) { 
+		// gather statistics only if we have data
+		if (i2b2.ExportSQL.model.dirtyResultsData) {
+		    // recalculate the results only if the input data has changed
+		    i2b2.ExportSQL.getResults();
 		}
-	});
+	    }
+	}
+    });
 };
 
-
+/* this function is called before the plugin is unloaded by the framework */
 i2b2.ExportSQL.Unload = function() {
-	// this function is called before the plugin is unloaded by the framework
-	return true;
+    return true;
 };
-
 
 i2b2.ExportSQL.doDrop = function(sdxData) {
-	sdxData = sdxData[0];	// only interested in first record
-	// save the info to our local data model
-	i2b2.ExportSQL.model.currentRec = sdxData;
-	// let the user know that the drop was successful by displaying the name of the object
-	$("ExportSQL-PRSDROP").innerHTML = i2b2.h.Escape(sdxData.sdxInfo.sdxDisplayName);
-	// optimization to prevent requerying the hive for new results if the input dataset has not changed
-	i2b2.ExportSQL.model.dirtyResultsData = true;		
+    sdxData = sdxData[0];	// only interested in first record
+    // save the info to our local data model
+    i2b2.ExportSQL.model.currentRec = sdxData;
+    // let the user know that the drop was successful by displaying the name of the object
+    $("ExportSQL-QMDROP").innerHTML = i2b2.h.Escape(sdxData.sdxInfo.sdxDisplayName);
+    // optimization to prevent requerying the hive for new results if the input dataset has not changed
+    i2b2.ExportSQL.model.dirtyResultsData = true;		
 }
 
-
+/* Refresh the display with info of the SDX record that was DragDropped */
 i2b2.ExportSQL.getResults = function() {
-    // Refresh the display with info of the SDX record that was DragDropped
     if (!i2b2.ExportSQL.model.dirtyResultsData) {
 	return;
     }
+    var statement  = i2b2.ExportSQL.getStatementObj();
     var dropRecord = i2b2.ExportSQL.model.currentRec;
     var qm_id      = dropRecord.sdxInfo.sdxKeyValue;
     var sdxDisplay = $$("DIV#ExportSQL-mainDiv DIV#ExportSQL-InfoSDX")[0];		
@@ -92,24 +78,38 @@ i2b2.ExportSQL.getResults = function() {
 	
 	// extract the data for each panel
 	for (var pnr = 0; pnr < panels.length; pnr++) {
-	    var exclude = (i2b2.h.getXNodeVal(panels[pnr],'invert') == 1);
-	    var panelTiming = i2b2.h.getXNodeVal(panels[pnr],'panel_timing') || 'ANY';
-	    var panelOccurences = (1 * i2b2.h.getXNodeVal(panels[pnr],'total_item_occurrences')) - 1;
-	    var panelAccuracy = i2b2.h.getXNodeVal(panels[pnr],'panel_accuracy_scale');					
-	    var panelDateFrom = i2b2.ExportSQL.extractDate(i2b2.h.getXNodeVal(panels[pnr],'panel_date_from'));
-	    var panelDateTo   = i2b2.ExportSQL.extractDate(i2b2.h.getXNodeVal(panels[pnr],'panel_date_to'));
-	    var panelItems    = i2b2.h.XPath(panels[pnr], 'descendant::item[item_key]');
+	    var exclude         = (i2b2.h.getXNodeVal(panels[pnr], 'invert') == 1);
+	    var panelTiming     = i2b2.h.getXNodeVal(panels[pnr], 'panel_timing') || 'ANY';
+	    var panelOccurences = (1 * i2b2.h.getXNodeVal(panels[pnr], 'total_item_occurrences')) - 1;
+	    var panelAccuracy   = i2b2.h.getXNodeVal(panels[pnr], 'panel_accuracy_scale');					
+	    var panelDateFrom   = i2b2.ExportSQL.extractDate(i2b2.h.getXNodeVal(panels[pnr], 'panel_date_from'));
+	    var panelDateTo     = i2b2.ExportSQL.extractDate(i2b2.h.getXNodeVal(panels[pnr], 'panel_date_to'));
+	    var panelItems      = i2b2.h.XPath(panels[pnr], 'descendant::item[item_key]');
 	    
 	    for (var itemNum = 0; itemNum <= panelItems.length - 1; itemNum++) {
-		var hlevel = i2b2.h.getXNodeVal(panelItems[itemNum], 'hlevel')
-
-		if (hlevel != 7 && hlevel != 8) {
-		    $$("DIV#ExportSQL-mainDiv DIV#ExportSQL-TABS DIV.results-hlevelError")[0].show();
+		var hlevel = i2b2.h.getXNodeVal(panelItems[itemNum], 'hlevel');
+		var key    = i2b2.h.getXNodeVal(panelItems[itemNum], 'item_key');
+		
+		if (!key.includes('SA')) {
+		    $$("DIV#ExportSQL-mainDiv DIV#ExportSQL-TABS DIV.results-invalidQuery")[0].show();
 		    return;
 		}
+
+		var dimdiColumn = 'SA' + key.replace(/(.*\\SA)(.*?)(\\.*)/, '$2');
 		itemsString 
 		    += (itemsString != '' ? ', ' : '')
-		    + i2b2.h.getXNodeVal(panelItems[itemNum], 'item_name');
+		    + dimdiColumn;
+
+		// handle constraints
+		var constraint = i2b2.h.XPath(panelItems[itemNum], 'descendant::constrain_by_value');
+		
+		if (constraint != null) {
+		    var operator = i2b2.h.getXNodeVal(constraint[0], 'value_operator');
+		    var value    = i2b2.h.getXNodeVal(constraint[0], 'value_constraint');
+		    var type     = i2b2.h.getXNodeVal(constraint[0], 'value_type');
+		    
+		    itemsString += itemsString + '(' + operator + ' ' + value + ')';
+		}
 	    }
 	}
 	
@@ -413,4 +413,49 @@ i2b2.ExportSQL.extractDate = function(string) {
     } else {
 	return false;
     }
+}
+
+i2b2.ExportSQL.getStatementObj = function() {
+    var statement = new function() {
+	this.tables     = []; // list of required db tables
+	this.itemGroups = []; // list of item groups (panels), containing items and there constraints
+	
+	/* returns generated SQL statement */
+	this.getSQL = function() {
+            return '';
+	};
+
+	/* adds an item to the currently activ item group */
+	this.addItem = function(item_key, constraint) {
+	
+	};
+
+	/* starts a new item group with specified constraints */
+	this.newGroup = function(constraints) {
+
+	};
+
+	/* returns the dimdi db table, which contains the given dimdi column and year*/
+	this.getTable = function(dimdiColumn, year) {
+	    var satzartNr = dimdiColumn.replace(/(SA\d\d\d)(.*)/, '$1');
+	    
+	    return table = satzartNr + 'V', year;
+	};
+
+	/* extracts the column name from the i2b2 path */
+	this.extractDimdiColumn = function(item_key) {
+	    var dimdiColumn = item_key.replace(/(.*\\)(SA.*?)(\\.*)/, '$2');
+
+	    return dimdiColumn;
+	};
+
+	/* adds a table, if not already added */
+	this.addTable = function(table) {
+	    if (tables.indexOf(table) < 0) {
+		tables.push(table);
+	    }
+	};
+    }
+
+    return statement;
 }

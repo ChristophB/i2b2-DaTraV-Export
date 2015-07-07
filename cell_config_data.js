@@ -5,9 +5,9 @@
 	css:[ "vwExportSQL.css" ],
 	config: {
 		// additional configuration variables that are set by the system
-		short_name: "Tabs and DragDrop",
-		name: "Example #2 - Tabs and DragDrop",
-		description: "This plugin demonstrates how to use tabs and interact with i2b2 objects by accepting DragDrop messages (SDX Objects).",
+		short_name: "ExportSQL",
+		name: "ExportSQL",
+		description: "This plugin generates and exports the Oracle-SQL statement, valid for the database structure of the DaTraV database.",
 		category: ["celless","plugin","examples"],
 		plugin: {
 			isolateHtml: false,  // this means do not use an IFRAME
