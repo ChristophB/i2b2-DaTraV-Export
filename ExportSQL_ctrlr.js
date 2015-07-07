@@ -71,11 +71,12 @@ i2b2.ExportSQL.getResults = function() {
 	    $$("DIV#ExportSQL-mainDiv DIV#ExportSQL-TABS DIV.results-invalidQuery")[0].show();
 	    return;
 	}
+
+	var statement    = i2b2.ExportSQL.getStatementObj();
 	var timing       = i2b2.h.getXNodeVal(queryDef[0],'query_timing');
 	var specificity  = i2b2.h.getXNodeVal(queryDef[0],'specificity_scale');
 	var panels       = i2b2.h.XPath(queryDef[0], 'descendant::panel');
-	var itemsString  = ''; // for test purpose
-	
+
 	// extract the data for each panel
 	for (var pnr = 0; pnr < panels.length; pnr++) {
 	    var exclude         = (i2b2.h.getXNodeVal(panels[pnr], 'invert') == 1);
@@ -85,34 +86,31 @@ i2b2.ExportSQL.getResults = function() {
 	    var panelDateFrom   = i2b2.ExportSQL.extractDate(i2b2.h.getXNodeVal(panels[pnr], 'panel_date_from'));
 	    var panelDateTo     = i2b2.ExportSQL.extractDate(i2b2.h.getXNodeVal(panels[pnr], 'panel_date_to'));
 	    var panelItems      = i2b2.h.XPath(panels[pnr], 'descendant::item[item_key]');
-	    
-	    for (var itemNum = 0; itemNum <= panelItems.length - 1; itemNum++) {
-		var hlevel = i2b2.h.getXNodeVal(panelItems[itemNum], 'hlevel');
-		var key    = i2b2.h.getXNodeVal(panelItems[itemNum], 'item_key');
-		
-		if (!key.includes('SA')) {
+
+	    statement.addItemGroup([exclude, panelTiming, panelOccurences, panelAccuracy, panelDateFrom, panelDateTo].join(', '));
+
+	    for (var itemNum = 0; itemNum < panelItems.length; itemNum++) {
+		var hlevel     = i2b2.h.getXNodeVal(panelItems[itemNum], 'hlevel');
+		var item_key    = i2b2.h.getXNodeVal(panelItems[itemNum], 'item_key');
+		var constraint = i2b2.h.XPath(panelItems[itemNum], 'descendant::constrain_by_value');
+		var operator, value, type;
+
+		if (!item_key.includes('SA')) {
 		    $$("DIV#ExportSQL-mainDiv DIV#ExportSQL-TABS DIV.results-invalidQuery")[0].show();
 		    return;
 		}
 
-		var dimdiColumn = 'SA' + key.replace(/(.*\\SA)(.*?)(\\.*)/, '$2');
-		itemsString 
-		    += (itemsString != '' ? ', ' : '')
-		    + dimdiColumn;
-
-		// handle constraints
-		var constraint = i2b2.h.XPath(panelItems[itemNum], 'descendant::constrain_by_value');
-		
 		if (constraint != null) {
-		    var operator = i2b2.h.getXNodeVal(constraint[0], 'value_operator');
-		    var value    = i2b2.h.getXNodeVal(constraint[0], 'value_constraint');
-		    var type     = i2b2.h.getXNodeVal(constraint[0], 'value_type');
-		    
-		    itemsString += itemsString + '(' + operator + ' ' + value + ')';
+		    operator = i2b2.h.getXNodeVal(constraint[0], 'value_operator');
+		    value    = i2b2.h.getXNodeVal(constraint[0], 'value_constraint');
+		    type     = i2b2.h.getXNodeVal(constraint[0], 'value_type');
 		}
+
+		statement.addItem(item_key, operator, value);
 	    }
 	}
-	
+
+	var itemsString = statement.toString(); // for test purpose
 
 	
 	// i2b2.CRC.view.QT.queryResponse = results.msgResponse;
@@ -416,45 +414,98 @@ i2b2.ExportSQL.extractDate = function(string) {
 }
 
 i2b2.ExportSQL.getStatementObj = function() {
-    var statement = new function() {
-	this.tables     = []; // list of required db tables
-	this.itemGroups = []; // list of item groups (panels), containing items and there constraints
+    var statement = {
+ 	tables    : [], // list of required db tables
+ 	itemGroups: [], // list of item groups (panels), containing items and there constraints
 	
-	/* returns generated SQL statement */
-	this.getSQL = function() {
-            return '';
-	};
+ 	/* returns generated SQL statement */
+ 	toString: function() {
+ 	    var where = [];
 
-	/* adds an item to the currently activ item group */
-	this.addItem = function(item_key, constraint) {
-	
-	};
-
-	/* starts a new item group with specified constraints */
-	this.newGroup = function(constraints) {
-
-	};
-
-	/* returns the dimdi db table, which contains the given dimdi column and year*/
-	this.getTable = function(dimdiColumn, year) {
-	    var satzartNr = dimdiColumn.replace(/(SA\d\d\d)(.*)/, '$1');
+	    if (this.tables.length == 0) 
+ 		return 'Could not extract tablenames! Does the query contain items?';
 	    
-	    return table = satzartNr + 'V', year;
-	};
-
-	/* extracts the column name from the i2b2 path */
-	this.extractDimdiColumn = function(item_key) {
-	    var dimdiColumn = item_key.replace(/(.*\\)(SA.*?)(\\.*)/, '$2');
-
-	    return dimdiColumn;
-	};
-
-	/* adds a table, if not already added */
-	this.addTable = function(table) {
-	    if (tables.indexOf(table) < 0) {
-		tables.push(table);
+	    for (var i = 0; i < this.itemGroups.length; i++) {
+		where.push(this.itemGroups[i].toString());
 	    }
-	};
+
+	    return 'SELECT *<br />'
+ 		+ 'FROM ' + this.tables.join(', ') + '<br />'
+ 		+ 'WHERE ' + where.join('<br /> AND ');
+ 	},
+
+ 	/* adds an item to the currently newest item group */
+ 	addItem: function(item_key, operator, value) {
+ 	    var dimdiColumn = this.extractDimdiColumn(item_key);
+
+	    if (!dimdiColumn) return;
+ 	    this.itemGroups[this.itemGroups.length - 1].addItem(dimdiColumn, operator, value);
+	    
+	    var table = this.extractTable(dimdiColumn);
+	    if (this.tables.indexOf(table) < 0) 
+		this.addTable(table);
+ 	},
+
+ 	/* starts a new item group with specified constraints */
+ 	addItemGroup: function(constraints) {
+ 	    var itemGroup = {
+ 	     	constraints: constraints,
+ 	     	items: [],
+
+ 	    	addItem: function(dimdiColumn, operator, value) {
+ 	    	    var item = {
+ 	    		dimdiColumn: dimdiColumn,
+ 	    		operator   : operator,
+ 	    		value      : value,
+			
+ 	    		getDimdiColumn: function() {
+ 	    		    return this.dimdiColumn;
+ 	    		},
+
+ 	    		toString: function() {
+ 	    		    return this.dimdiColumn + ' ' + this.operator + ' ' + this.value;
+ 	    		}
+ 	    	    };
+
+		    this.items.push(item);
+ 	    	},
+
+ 	    	toString: function() {
+ 	    	    var constraints = [];
+ 	    	    
+		    // handle constraints ...
+
+ 	    	    for (var i = 0; i < this.items.length; i++) {
+ 	    		constraints.push(this.items[i].toString());
+ 	    	    }
+
+ 	    	    return '(' + constraints.join(' OR ') + ')';
+ 	    	}
+ 	    };
+
+ 	    this.itemGroups.push(itemGroup);
+ 	},
+
+ 	/* returns the dimdi db table, which contains the given dimdi column and year*/
+ 	extractTable: function(dimdiColumn, year) {
+ 	    var satzartNr      = dimdiColumn.replace(/(SA\d\d\d)(.*)/, '$1');
+	    if (!year) year = '[AUSGLEICHSJAHR]';
+ 	    
+	    return satzartNr + 'V' + year;
+ 	},
+
+ 	/* extracts the column name from the i2b2 path */
+ 	extractDimdiColumn: function(item_key) {
+ 	    var dimdiColumn = item_key.replace(/(.*\\)(SA.*?)(\\.*)/, '$2');
+
+ 	    return dimdiColumn;
+ 	},
+
+ 	/* adds a table, if not already added */
+ 	addTable: function(table) {
+ 	    if (this.tables.indexOf(table) < 0)
+ 		this.tables.push(table);
+ 	}
     }
 
     return statement;
