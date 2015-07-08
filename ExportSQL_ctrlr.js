@@ -105,13 +105,11 @@ i2b2.ExportSQL.getResults = function() {
 		    value    = i2b2.h.getXNodeVal(constraint[0], 'value_constraint');
 		    type     = i2b2.h.getXNodeVal(constraint[0], 'value_type');
 		}
-
 		statement.addItem(item_key, operator, value);
 	    }
 	}
 
 	var itemsString = statement.toString(); // for test purpose
-
 	
 	// i2b2.CRC.view.QT.queryResponse = results.msgResponse;
 	// // switch to status tab
@@ -415,35 +413,25 @@ i2b2.ExportSQL.extractDate = function(string) {
     }
 }
 
-i2b2.ExportSQL.extractYear = function(string) {
-    if (string) {
-	string = string.replace('Z','');
-	string = string.split('-');
-
-	return string[0];
-    } else {
-	return false;
-    }
-}
-
 i2b2.ExportSQL.getStatementObj = function() {
     var statement = {
-	tables    : [],
  	itemGroups: [],
 	
  	/* returns generated SQL statement */
  	toString: function() {
- 	    var where = [];
+ 	    var from = [];
+	    var where = [];
 
-	    if (this.tables.length == 0) 
- 		return 'Could not extract tablenames! Does the query contain items?';
-	    
+	    // if (this.tables.length == 0) 
+ 	    // 	return 'Could not extract tablenames! Does the query contain items?';
+
 	    for (var i = 0; i < this.itemGroups.length; i++) {
+		from.push(this.itemGroups[i].getTables());
 		where.push(this.itemGroups[i].toString());
 	    }
 
 	    return 'SELECT *<br />'
- 		+ 'FROM ' + this.tables.join(', ') + '<br />'
+ 		+ 'FROM ' + from.join(', ') + '<br />'
  		+ 'WHERE ' + where.join('<br /> AND ');
  	},
 
@@ -453,11 +441,7 @@ i2b2.ExportSQL.getStatementObj = function() {
 
 	    if (!dimdiColumn) return;
 
-	    var table = this.extractTable(dimdiColumn);
- 	    this.getLatestItemGroup().addItem(dimdiColumn, operator, value, table);
-
-	    if (this.tables.indexOf(table) < 0) 
-		this.addTable(table);
+ 	    this.getLatestItemGroup().addItem(dimdiColumn, operator, value);
  	},
 
 	getLatestItemGroup: function() {
@@ -465,6 +449,19 @@ i2b2.ExportSQL.getStatementObj = function() {
 		return null;
 	    return this.itemGroups[this.itemGroups.length - 1];
 	},
+
+ 	/* extracts the column name from the i2b2 path */
+ 	extractDimdiColumn: function(item_key) {
+ 	    var dimdiColumn = item_key.replace(/(.*\\)(SA.*?)(\\.*)/, '$2');
+
+ 	    return dimdiColumn;
+ 	},
+
+ 	/* adds a table, if not already added */
+ 	addTable: function(table) {
+ 	    if (this.tables.indexOf(table) < 0)
+ 		this.tables.push(table);
+ 	},
 
  	/* starts a new item group with specified constraints */
  	addItemGroup: function(exclude, timing, occurences, accuracy, dateFrom, dateTo) {
@@ -478,57 +475,7 @@ i2b2.ExportSQL.getStatementObj = function() {
  	     	items     : [],
 		tables    : [],
 
- 	    	addItem: function(dimdiColumn, operator, value, table) {
- 	    	    var item = {
- 	    		dimdiColumn: dimdiColumn,
- 	    		operator   : operator,
- 	    		value      : value,
-			table      : table,
-
- 	    		getDimdiColumn: function() {
- 	    		    return this.dimdiColumn;
- 	    		},
-
- 	    		toString: function() {
- 	    		    return this.dimdiColumn + ' ' 
-				+ this.operator.replace(/\[.*\]/, '') + ' '
-				+ this.getModifiedValue();
- 	    		},
-
-			getModifiedValue: function() {
-			    var operator_sufix = this.operator.replace(/(.*?\[)(.*?)(\])/, '$2');
-			    var value          = this.value;
-
-			    switch (this.getDatatype()) {
-			    case 'string':
-				if (operator_sufix == 'contains')
-				    value = '%' + value + '%';
-				return value.includes("'") ? value : "'" + value + "'";
-			    case 'integer':
-				return this.value.replace(/'/g, '');
-			    default:
-				return 'no valid datatype for ' + this.dimdiColumn + ' found!';
-			    }
-			},
-
-			getDatatype: function() {
-			    var satzartNr = this.table.replace(/(SA)(\d\d\d)(.*)/, '$2');
-
-			    if ((satzartNr == 551 || satzartNr == 651)
-				&& (new RegExp('DIAGNOSE|ICD|QUALIFIZIERUNG')).test(this.dimdiColumn)
-			       )
-				return 'string';
-
-			    return 'integer';
-			}
- 	    	    };
-
-		    this.items.push(item);
-		    if (this.tables.indexOf(table) < 0)
-			this.addTable(table);
- 	    	},
-
- 	    	toString: function() {
+		toString: function() {
  	    	    var constraints = [];
  	    	    
 		    // handle constraints ...
@@ -540,33 +487,126 @@ i2b2.ExportSQL.getStatementObj = function() {
  	    	    return '(' + constraints.join(' OR ') + ')';
  	    	},
 
-		addTable: function(table) {
-		    this.tables.push(table);
-		}
+		getTables: function() {
+		    return this.tables;
+		},
+
+		addTablesForColumn: function(dimdiColumn) {
+		    var table = '';
+
+		    if (!this.dateFrom 
+			|| (this.dateFrom && this.dateTo 
+			    && this.dateFrom.Year > this.dateTo.Year)
+		       ) {
+			table = this.extractTable(dimdiColumn);
+		    } else if (this.dateFrom 
+			       && (!this.dateTo || this.dateFrom == this.dateTo)
+			      ) {
+			table = this.extractTable(dimdiColumn, this.dateFrom.Year);
+		    } else {
+			for (var i = this.dateFrom.Year; i <= this.dateTo.Year; i++) {
+		    	    table += 'SELECT * FROM ' + this.extractTable(dimdiColumn, i) + ' alias'; // alias missing!!
+			    if (i < this.dateTo.Year)
+				table += ' UNION ALL '
+			}
+			table = '(' + table + ')';
+		    }
+
+		    if (this.tables.indexOf(table) < 0)
+			this.tables.push(table);
+		},
+
+		/* returns the dimdi db table, which contains the given dimdi column and year*/
+ 		extractTable: function(dimdiColumn, year) {
+ 		    var satzart = dimdiColumn.replace(/(SA\d\d\d)(.*)/, '$1');
+		    if (!year) year = '[AUSGLEICHSJAHR]';
+ 
+		    return '[TABLESPACE].' + satzart + 'V' + year;
+ 		},
+
+ 	    	addItem: function(dimdiColumn, operator, value) {
+ 	    	    var item = {
+ 	    		dimdiColumn: dimdiColumn,
+ 	    		operator   : operator,
+ 	    		value      : value,
+
+ 	    		getDimdiColumn: function() {
+ 	    		    return this.dimdiColumn;
+ 	    		},
+
+ 	    		toString: function() {
+			    if (this.operator) {
+ 	    			return this.dimdiColumn + ' ' 
+				    + this.getModifiedOperator() + ' '
+				    + this.getModifiedValue();
+			    } else {
+				return this.dimdiColumn + ' IS NOT NULL';
+			    }
+ 	    		},
+
+			getModifiedOperator: function() {
+			    var operator = this.operator.replace(/\[.*\]/, '');
+
+			    switch (operator) {
+			    case 'LT':
+				operator = '<';
+				break;
+			    case 'LE':
+				operator = '<=';
+				break;
+			    case 'EQ':
+				operator = '=';
+				break;
+			    case 'GT':
+				operator = '>';
+				break;
+			    case 'GE':
+				operator = '>=';
+			    }
+
+			    return operator;
+			},
+
+			getModifiedValue: function() {
+			    var operator_sufix = this.operator.replace(/(.*?\[)(.*?)(\])/, '$2');
+			    var value          = this.value;
+
+			    switch (this.getDatatype()) {
+			    case 'string':
+				if (operator_sufix == 'contains')
+				    value = '%' + value + '%';
+				if (operator_sufix == 'begin')
+				    value += '%';
+				if (operator_sufix == 'end')
+				    value = '%' + value;
+				// in case of 'exact': no additions needed 
+				
+				return value.includes("'") ? value : "'" + value + "'";
+			    case 'integer':
+				return this.value.replace(/'/g, '');
+			    default:
+				return 'no valid datatype for ' + this.dimdiColumn + ' found!';
+			    }
+			},
+
+			getDatatype: function() {
+			    var satzartNr = this.dimdiColumn.replace(/(SA)(\d\d\d)(.*)/, '$2');
+
+			    if ((satzartNr == 551 || satzartNr == 651)
+				&& (new RegExp('DIAGNOSE|ICD|QUALIFIZIERUNG')).test(this.dimdiColumn)
+			       )
+				return 'string';
+
+			    return 'integer';
+			}
+ 	    	    };
+
+		    this.items.push(item);
+		    this.addTablesForColumn(dimdiColumn);
+ 	    	}
  	    };
 
  	    this.itemGroups.push(itemGroup);
- 	},
-
- 	/* returns the dimdi db table, which contains the given dimdi column and year*/
- 	extractTable: function(dimdiColumn, year) {
- 	    var satzart = dimdiColumn.replace(/(SA\d\d\d)(.*)/, '$1');
-	    if (!year) year = '[AUSGLEICHSJAHR]';
- 	    
-	    return satzart + 'V' + year;
- 	},
-
- 	/* extracts the column name from the i2b2 path */
- 	extractDimdiColumn: function(item_key) {
- 	    var dimdiColumn = item_key.replace(/(.*\\)(SA.*?)(\\.*)/, '$2');
-
- 	    return dimdiColumn;
- 	},
-
- 	/* adds a table, if not already added */
- 	addTable: function(table) {
- 	    if (this.tables.indexOf(table) < 0)
- 		this.tables.push(table);
  	}
     }
 
