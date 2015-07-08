@@ -397,6 +397,16 @@ i2b2.ExportSQL.getResults = function() {
     i2b2.ExportSQL.model.dirtyResultsData = false;		
 }
 
+/**
+ * transforms a string to an array containing year, month and day
+ *
+ * @param {string} string - containing date and time
+ *
+ * @return {Object} date
+ * @return {Object} date.Year
+ * @return {Object} date.Month
+ * @return {Object} date.Day
+ */
 i2b2.ExportSQL.extractDate = function(string) {
     var date = {};
     if (string) {
@@ -413,29 +423,74 @@ i2b2.ExportSQL.extractDate = function(string) {
     }
 }
 
+/**
+ * handles the processing and transformation to a SQL statement
+ */
 i2b2.ExportSQL.getStatementObj = function() {
     var statement = {
  	itemGroups: [],
 	
- 	/* returns generated SQL statement */
+ 	/**
+	 * returns generated SQL statement
+	 *
+	 * @return {string} SQL statement
+	 */
  	toString: function() {
  	    var from = [];
 	    var where = [];
 
-	    // if (this.tables.length == 0) 
- 	    // 	return 'Could not extract tablenames! Does the query contain items?';
-
 	    for (var i = 0; i < this.itemGroups.length; i++) {
-		from.push(this.itemGroups[i].getTables());
+		from = from.concat(this.itemGroups[i].getTables());
 		where.push(this.itemGroups[i].toString());
 	    }
 
 	    return 'SELECT *<br />'
- 		+ 'FROM ' + from.join(', ') + '<br />'
+ 		+ 'FROM ' + this.tableArrayToString(from) + '<br />'
  		+ 'WHERE ' + where.join('<br /> AND ');
  	},
 
- 	/* adds an item to the currently newest item group */
+	/**
+	 * transformes an array of table expressions to a string
+	 * joins are realised as FULL (OUTER) JOIN
+	 *
+	 * @param {Object} array - array of table expressions
+	 *
+	 * @return {string} SQL
+	 */
+	tableArrayToString: function(array) {
+	    var sql = '';
+	    var prevTable;
+
+	    for (var i = 0; i < array.length; i++) {
+		if (prevTable) {
+		    var prevSatzart    = String(prevTable).replace(/(.*?)(SA\d\d\d)(.*)/, '$2');
+		    var curSatzart     = String(array[i]).replace(/(.*?)(SA\d\d\d)(.*)/, '$2');
+		    var joinConstraint = '';
+
+		    if (prevSatzart == curSatzart) {
+			joinConstraint = ' USING (' + curSatzart + '_PSID)';
+		    } else {
+			joinConstraint = ' ON (' + prevSatzart + '_PSID = ' + curSatzart + '_PSID)';
+		    }
+
+		    sql += ' FULL JOIN ' + array[i] + joinConstraint;
+		} else {
+		    sql += array[i];
+		}
+
+		prevTable = array[i];
+	    }
+
+	    return sql;
+	},
+
+ 	/**
+	 * adds an item to the currently newest item group
+	 * 
+	 * @param {string} item_key - i2b2 path
+	 * @param {string} operator - i2b2 database operator
+	 * @param {string} value - value the item is matched to
+	 */
  	addItem: function(item_key, operator, value) {
  	    var dimdiColumn = this.extractDimdiColumn(item_key);
 
@@ -444,26 +499,50 @@ i2b2.ExportSQL.getStatementObj = function() {
  	    this.getLatestItemGroup().addItem(dimdiColumn, operator, value);
  	},
 
+	/**
+	 * returns the itemGroup of itemGroups array with the highest index
+	 *
+	 * @return {Object} itemGroup
+	 */ 
 	getLatestItemGroup: function() {
 	    if (this.itemGroups.length == 0)
 		return null;
 	    return this.itemGroups[this.itemGroups.length - 1];
 	},
 
- 	/* extracts the column name from the i2b2 path */
+ 	/**
+	 * extracts the column name from the given i2b2 path
+	 *
+	 * @param {string} item_key - i2b2 path
+	 *
+	 * @return {string} dimdiColumn
+	 */
  	extractDimdiColumn: function(item_key) {
  	    var dimdiColumn = item_key.replace(/(.*\\)(SA.*?)(\\.*)/, '$2');
 
  	    return dimdiColumn;
  	},
 
- 	/* adds a table, if not already added */
+ 	/**
+	 * adds a table expression to tables array, if not already added 
+	 *
+	 * @param {string} table - table expression 
+	 */
  	addTable: function(table) {
  	    if (this.tables.indexOf(table) < 0)
  		this.tables.push(table);
  	},
 
- 	/* starts a new item group with specified constraints */
+ 	/**
+	 * starts a new item group with specified constraints
+	 *
+	 * @param {string} exclude - 
+	 * @param {string} timing - 
+	 * @param {integer} occurences - 
+	 * @param {integer} accuracy - 
+	 * @param {Object} dateFrom - start date for observation
+	 * @param {Object} dateTo - end date for obserfation
+	 */
  	addItemGroup: function(exclude, timing, occurences, accuracy, dateFrom, dateTo) {
  	    var itemGroup = {
  	     	exclude   : exclude,
@@ -475,6 +554,11 @@ i2b2.ExportSQL.getStatementObj = function() {
  	     	items     : [],
 		tables    : [],
 
+		/**
+		 * transforms the itemGroup to SQL syntax
+		 *
+		 * @return {string} SQL string
+		 */
 		toString: function() {
  	    	    var constraints = [];
  	    	    
@@ -487,10 +571,20 @@ i2b2.ExportSQL.getStatementObj = function() {
  	    	    return '(' + constraints.join(' OR ') + ')';
  	    	},
 
+		/**
+		 * @return {Object} tables array
+		 */
 		getTables: function() {
 		    return this.tables;
 		},
 
+		/**
+		 * adds dimdi db table names to the tables array, for a given column name
+		 * if there are multiple years selected for the itemGroup, the table name
+		 * gets generated for each year (connected by UNION ALL)
+		 *
+		 * @param {string} dimdiColumn - valid dimdi database column name
+		 */
 		addTablesForColumn: function(dimdiColumn) {
 		    var table = '';
 
@@ -516,24 +610,46 @@ i2b2.ExportSQL.getStatementObj = function() {
 			this.tables.push(table);
 		},
 
-		/* returns the dimdi db table, which contains the given dimdi column and year*/
+		/**
+		 * returns the dimdi db table, which contains the given dimdi column and year
+		 *
+		 * @param {string} dimdiColumn - valid column name of the dimdi database
+		 * @param {integer} year - Ausgleichsjahr (optional)
+		 *
+		 * @return {string} table name
+		 */
  		extractTable: function(dimdiColumn, year) {
  		    var satzart = dimdiColumn.replace(/(SA\d\d\d)(.*)/, '$1');
 		    if (!year) year = '[AUSGLEICHSJAHR]';
  
-		    return '[TABLESPACE].' + satzart + 'V' + year;
+		    return '[TABLESPACE].' + 'V' + year + satzart;
  		},
 
+		/** 
+		 * adds a new item to the items array
+		 *
+		 * @param {string} dimdiColumn - dimdi database conform column name
+		 * @param {string} operator - the operator used by i2b2 to query the i2b2 database
+		 * @param {string} value - the value the item is matched to
+		 */
  	    	addItem: function(dimdiColumn, operator, value) {
  	    	    var item = {
  	    		dimdiColumn: dimdiColumn,
  	    		operator   : operator,
  	    		value      : value,
 
+			/**
+			 * @return {string} dimdiColumn 
+			 */
  	    		getDimdiColumn: function() {
  	    		    return this.dimdiColumn;
  	    		},
 
+			/**
+			 * transforms the item to SQL
+			 *
+			 * @return {string} SQL string build from dimdiCOlumn, operator and value
+			 */
  	    		toString: function() {
 			    if (this.operator) {
  	    			return this.dimdiColumn + ' ' 
@@ -544,29 +660,32 @@ i2b2.ExportSQL.getStatementObj = function() {
 			    }
  	    		},
 
+			/** 
+			 * returns the operator translatet to SQL syntax
+			 *
+			 * @return {string} operator in SQL syntax
+			 */
 			getModifiedOperator: function() {
-			    var operator = this.operator.replace(/\[.*\]/, '');
+			    var operator  = this.operator.replace(/\[.*\]/, '');
+			    var sqlMapper = {
+				'LT'  : '<'
+				, 'LE': '<='
+				, 'EQ': '='
+				, 'GT': '>'
+				, 'GE': '>='
+			    };
 
-			    switch (operator) {
-			    case 'LT':
-				operator = '<';
-				break;
-			    case 'LE':
-				operator = '<=';
-				break;
-			    case 'EQ':
-				operator = '=';
-				break;
-			    case 'GT':
-				operator = '>';
-				break;
-			    case 'GE':
-				operator = '>=';
-			    }
-
+			    if (sqlMapper[operator])
+				return sqlMapper[operator];
 			    return operator;
 			},
 
+			/** 
+			 * returns the value of the item
+			 * the value is modified, depending on the datatype and operation
+			 *
+			 * @return {string} modified value
+			 */ 
 			getModifiedValue: function() {
 			    var operator_sufix = this.operator.replace(/(.*?\[)(.*?)(\])/, '$2');
 			    var value          = this.value;
@@ -589,7 +708,12 @@ i2b2.ExportSQL.getStatementObj = function() {
 			    }
 			},
 
-			getDatatype: function() {
+			/**
+			 * returns 'string' or 'integer' depending on the given dimdi db column name 
+			 *
+			 * @param {string} 'string' or 'integer'
+			 */
+			isInteger: function() {
 			    var satzartNr = this.dimdiColumn.replace(/(SA)(\d\d\d)(.*)/, '$2');
 
 			    if ((satzartNr == 551 || satzartNr == 651)
