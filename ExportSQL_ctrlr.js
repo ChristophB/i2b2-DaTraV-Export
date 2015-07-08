@@ -87,7 +87,7 @@ i2b2.ExportSQL.getResults = function() {
 	    var panelDateTo     = i2b2.ExportSQL.extractDate(i2b2.h.getXNodeVal(panels[pnr], 'panel_date_to'));
 	    var panelItems      = i2b2.h.XPath(panels[pnr], 'descendant::item[item_key]');
 
-	    statement.addItemGroup([exclude, panelTiming, panelOccurences, panelAccuracy, panelDateFrom, panelDateTo].join(', '));
+	    statement.addItemGroup(exclude, panelTiming, panelOccurences, panelAccuracy, panelDateFrom, panelDateTo);
 
 	    for (var itemNum = 0; itemNum < panelItems.length; itemNum++) {
 		var hlevel     = i2b2.h.getXNodeVal(panelItems[itemNum], 'hlevel');
@@ -381,13 +381,13 @@ i2b2.ExportSQL.getResults = function() {
 	// hide the loading mask
 	i2b2.h.LoadingMask.hide();
 	
-	Element.select(sdxDisplay, '.queryMasterName')[0].innerHTML  = queryMasterName;
-	Element.select(sdxDisplay, '.sdxType')[0].innerHTML          = dropRecord.sdxInfo.sdxType;
-	Element.select(sdxDisplay, '.sdxControlCell')[0].innerHTML   = dropRecord.sdxInfo.sdxControlCell;
-	Element.select(sdxDisplay, '.queryMasterId')[0].innerHTML    = dropRecord.sdxInfo.sdxKeyValue;
-	Element.select(sdxDisplay, '.queryTiming')[0].innerHTML      = timing;
-	Element.select(sdxDisplay, '.specificityScale')[0].innerHTML = specificity;
-	Element.select(sdxDisplay, '.items')[0].innerHTML            = itemsString;
+	// Element.select(sdxDisplay, '.queryMasterName')[0].innerHTML  = queryMasterName;
+	// Element.select(sdxDisplay, '.sdxType')[0].innerHTML          = dropRecord.sdxInfo.sdxType;
+	// Element.select(sdxDisplay, '.sdxControlCell')[0].innerHTML   = dropRecord.sdxInfo.sdxControlCell;
+	// Element.select(sdxDisplay, '.queryMasterId')[0].innerHTML    = dropRecord.sdxInfo.sdxKeyValue;
+	// Element.select(sdxDisplay, '.queryTiming')[0].innerHTML      = timing;
+	// Element.select(sdxDisplay, '.specificityScale')[0].innerHTML = specificity;
+	Element.select(sdxDisplay, '.sql')[0].innerHTML = itemsString;
 	Element.select(sdxDisplay, '.msgResponse')[0].innerHTML 
 	    = '<pre>' + i2b2.h.Escape(results.msgResponse) + '</pre>';
 	$$("DIV#ExportSQL-mainDiv DIV#ExportSQL-TABS DIV.results-finished")[0].show();
@@ -400,14 +400,27 @@ i2b2.ExportSQL.getResults = function() {
 }
 
 i2b2.ExportSQL.extractDate = function(string) {
+    var date = {};
     if (string) {
 	string = string.replace('Z','');
 	string = string.split('-');
-	var date = {};
+
 	date.Year  = string[0];
 	date.Month = string[1];
 	date.Day   = string[2];
+	
 	return date;
+    } else {
+	return false;
+    }
+}
+
+i2b2.ExportSQL.extractYear = function(string) {
+    if (string) {
+	string = string.replace('Z','');
+	string = string.split('-');
+
+	return string[0];
     } else {
 	return false;
     }
@@ -415,8 +428,8 @@ i2b2.ExportSQL.extractDate = function(string) {
 
 i2b2.ExportSQL.getStatementObj = function() {
     var statement = {
- 	tables    : [], // list of required db tables
- 	itemGroups: [], // list of item groups (panels), containing items and there constraints
+	tables    : [],
+ 	itemGroups: [],
 	
  	/* returns generated SQL statement */
  	toString: function() {
@@ -439,35 +452,80 @@ i2b2.ExportSQL.getStatementObj = function() {
  	    var dimdiColumn = this.extractDimdiColumn(item_key);
 
 	    if (!dimdiColumn) return;
- 	    this.itemGroups[this.itemGroups.length - 1].addItem(dimdiColumn, operator, value);
-	    
+
 	    var table = this.extractTable(dimdiColumn);
+ 	    this.getLatestItemGroup().addItem(dimdiColumn, operator, value, table);
+
 	    if (this.tables.indexOf(table) < 0) 
 		this.addTable(table);
  	},
 
- 	/* starts a new item group with specified constraints */
- 	addItemGroup: function(constraints) {
- 	    var itemGroup = {
- 	     	constraints: constraints,
- 	     	items: [],
+	getLatestItemGroup: function() {
+	    if (this.itemGroups.length == 0)
+		return null;
+	    return this.itemGroups[this.itemGroups.length - 1];
+	},
 
- 	    	addItem: function(dimdiColumn, operator, value) {
+ 	/* starts a new item group with specified constraints */
+ 	addItemGroup: function(exclude, timing, occurences, accuracy, dateFrom, dateTo) {
+ 	    var itemGroup = {
+ 	     	exclude   : exclude,
+		timing    : timing,
+		occurences: occurences,
+		accuracy  : accuracy,
+		dateFrom  : dateFrom,
+		dateTo    : dateTo,
+ 	     	items     : [],
+		tables    : [],
+
+ 	    	addItem: function(dimdiColumn, operator, value, table) {
  	    	    var item = {
  	    		dimdiColumn: dimdiColumn,
  	    		operator   : operator,
  	    		value      : value,
-			
+			table      : table,
+
  	    		getDimdiColumn: function() {
  	    		    return this.dimdiColumn;
  	    		},
 
  	    		toString: function() {
- 	    		    return this.dimdiColumn + ' ' + this.operator + ' ' + this.value;
- 	    		}
+ 	    		    return this.dimdiColumn + ' ' 
+				+ this.operator.replace(/\[.*\]/, '') + ' '
+				+ this.getModifiedValue();
+ 	    		},
+
+			getModifiedValue: function() {
+			    var operator_sufix = this.operator.replace(/(.*?\[)(.*?)(\])/, '$2');
+			    var value          = this.value;
+
+			    switch (this.getDatatype()) {
+			    case 'string':
+				if (operator_sufix == 'contains')
+				    value = '%' + value + '%';
+				return value.includes("'") ? value : "'" + value + "'";
+			    case 'integer':
+				return this.value.replace(/'/g, '');
+			    default:
+				return 'no valid datatype for ' + this.dimdiColumn + ' found!';
+			    }
+			},
+
+			getDatatype: function() {
+			    var satzartNr = this.table.replace(/(SA)(\d\d\d)(.*)/, '$2');
+
+			    if ((satzartNr == 551 || satzartNr == 651)
+				&& (new RegExp('DIAGNOSE|ICD|QUALIFIZIERUNG')).test(this.dimdiColumn)
+			       )
+				return 'string';
+
+			    return 'integer';
+			}
  	    	    };
 
 		    this.items.push(item);
+		    if (this.tables.indexOf(table) < 0)
+			this.addTable(table);
  	    	},
 
  	    	toString: function() {
@@ -480,7 +538,11 @@ i2b2.ExportSQL.getStatementObj = function() {
  	    	    }
 
  	    	    return '(' + constraints.join(' OR ') + ')';
- 	    	}
+ 	    	},
+
+		addTable: function(table) {
+		    this.tables.push(table);
+		}
  	    };
 
  	    this.itemGroups.push(itemGroup);
@@ -488,10 +550,10 @@ i2b2.ExportSQL.getStatementObj = function() {
 
  	/* returns the dimdi db table, which contains the given dimdi column and year*/
  	extractTable: function(dimdiColumn, year) {
- 	    var satzartNr      = dimdiColumn.replace(/(SA\d\d\d)(.*)/, '$1');
+ 	    var satzart = dimdiColumn.replace(/(SA\d\d\d)(.*)/, '$1');
 	    if (!year) year = '[AUSGLEICHSJAHR]';
  	    
-	    return satzartNr + 'V' + year;
+	    return satzart + 'V' + year;
  	},
 
  	/* extracts the column name from the i2b2 path */
