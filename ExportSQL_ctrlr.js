@@ -554,6 +554,7 @@ i2b2.ExportSQL.getStatementObj = function() {
 		dateTo    : dateTo,
  	     	items     : [],
 		tables    : [],
+		alias     : '', // ####### nutzen, um referenzierungen zwischen äußerer und innerer query zu ermöglichen  ########
 
 		/**
 		 * transforms the itemGroup to SQL syntax
@@ -592,19 +593,25 @@ i2b2.ExportSQL.getStatementObj = function() {
 		    if (!this.dateFrom 
 			|| (this.dateFrom && this.dateTo 
 			    && this.dateFrom.Year > this.dateTo.Year)
-		       ) {
-			table = this.extractTable(dimdiColumn);
+		       ) { // missing or invalid from-date
+			table = this.extractTableWithTablespace(dimdiColumn);
 		    } else if (this.dateFrom 
 			       && (!this.dateTo || this.dateFrom == this.dateTo)
-			      ) {
-			table = this.extractTable(dimdiColumn, this.dateFrom.Year);
-		    } else {
+			      ) { // missing or equal to-date
+			table = this.extractTableWithTablespace(dimdiColumn, this.dateFrom.Year);
+		    } else { // from- and to-date given
+			var alias = '';
+
 			for (var i = this.dateFrom.Year; i <= this.dateTo.Year; i++) {
-		    	    table += 'SELECT * FROM ' + this.extractTable(dimdiColumn, i) + ' alias'; // alias missing!!
-			    if (i < this.dateTo.Year)
-				table += ' UNION ALL '
+		    	    table += 'SELECT * FROM ' + this.extractTableWithTablespace(dimdiColumn, i);
+			    alias += this.extractTable(dimdiColumn, i);
+			    if (i < this.dateTo.Year) {
+				table += ' UNION ALL ';
+				alias += '_';
+			    }
+			    alert(alias);
 			}
-			table = '(' + table + ')';
+			table = '(' + table + ') ' + alias;
 		    }
 
 		    return table;
@@ -624,6 +631,18 @@ i2b2.ExportSQL.getStatementObj = function() {
 		},
 
 		/**
+		 * returns the dimdi db table and tablespace, which contains the given dimdi column and year
+		 *
+		 * @param {string} dimdiColumn - valid column name of the dimdi database
+		 * @param {integer} year - Ausgleichsjahr (optional)
+		 *
+		 * @return {string} table name with tablespace
+		 */
+ 		extractTableWithTablespace: function(dimdiColumn, year) {
+ 		    return '[TABLESPACE].' + this.extractTable(dimdiColumn, year);
+ 		},
+
+		/**
 		 * returns the dimdi db table, which contains the given dimdi column and year
 		 *
 		 * @param {string} dimdiColumn - valid column name of the dimdi database
@@ -631,12 +650,12 @@ i2b2.ExportSQL.getStatementObj = function() {
 		 *
 		 * @return {string} table name
 		 */
- 		extractTable: function(dimdiColumn, year) {
- 		    var satzart = dimdiColumn.replace(/(SA\d\d\d)(.*)/, '$1');
+		extractTable: function(dimdiColumn, year) {
+		    var satzart = dimdiColumn.replace(/(SA\d\d\d)(.*)/, '$1');
 		    if (!year) year = '[AUSGLEICHSJAHR]';
  
-		    return '[TABLESPACE].' + 'V' + year + satzart;
- 		},
+		    return 'V' + year + satzart;
+		},
 
 		/** 
 		 * adds a new item to the items array
@@ -665,12 +684,13 @@ i2b2.ExportSQL.getStatementObj = function() {
 			/**
 			 * transforms the item to SQL
 			 *
-			 * @return {string} SQL string build from dimdiCOlumn, operator and value
+			 * @return {string} SQL string build from dimdiColumn, operator and value
 			 */
  	    		toString: function() {
 			    var sql        = '';
 			    var constraint = '';
-			    
+			    var satzart    = this.dimdiColumn.replace(/(SA\d\d\d)(.*)/, '$1');
+
 			    if (this.operator) {
  	    			constraint = this.dimdiColumn + ' ' 
 				    + this.getModifiedOperator() + ' '
@@ -680,12 +700,14 @@ i2b2.ExportSQL.getStatementObj = function() {
 			    }
 
 			    if (this.occurences > 1) {
+				var alias = 'alias'; // mit äußerer query synchronisieren
+
 				sql = this.occurences + ' <= '
 				    + '(SELECT count(*)'
 				    + ' FROM ' + table
 				    + ' WHERE ' + constraint
-				    + '       AND PSID2 = alias.PSID2'
-				    + ')'
+				    + '       AND SA' + satzart + '_PSID2 = ' + alias + '.' + satzart + '_PSID2'
+				    + ')';
 			    } else {
 				sql = constraint;
 			    }
