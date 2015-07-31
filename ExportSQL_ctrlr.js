@@ -12,19 +12,19 @@ i2b2.ExportSQL.Init = function(loadedDiv) {
     // manage YUI tabs
     var cfgObj = {activeIndex : 0};
     this.yuiTabs = new YAHOO.widget.TabView('ExportSQL-TABS', cfgObj);
-    this.yuiTabs.on('activeTabChange', function(ev) { 
-	//Tabs have changed 
-	if (ev.newValue.get('id')=='ExportSQL-TAB1') {
-	    // user switched to Results tab
-	    if (i2b2.ExportSQL.model.currentRec) { 
-		// gather statistics only if we have data
-		if (i2b2.ExportSQL.model.dirtyResultsData) {
-		    // recalculate the results only if the input data has changed
-		    i2b2.ExportSQL.getResults();
-		}
-	    }
-	}
-    });
+    // this.yuiTabs.on('activeTabChange', function(ev) { 
+    // 	//Tabs have changed 
+    // 	if (ev.newValue.get('id')=='ExportSQL-TAB1') {
+    // 	    // user switched to Results tab
+    // 	    if (i2b2.ExportSQL.model.currentRec) { 
+    // 		// gather statistics only if we have data
+    // 		if (i2b2.ExportSQL.model.dirtyResultsData) {
+    // 		    // recalculate the results only if the input data has changed
+    // 		    i2b2.ExportSQL.getResults();
+    // 		}
+    // 	    }
+    // 	}
+    // });
 };
 
 /* this function is called before the plugin is unloaded by the framework */
@@ -109,7 +109,7 @@ i2b2.ExportSQL.getResults = function() {
 		statement.addItem(item_key, operator, value);
 	    }
 	}
-	var itemsString = statement.toString(); // for test purpose
+	var itemsString = statement.toString2(); // for test purpose
 	
 	// i2b2.CRC.view.QT.queryResponse = results.msgResponse;
 	// // switch to status tab
@@ -449,6 +449,23 @@ i2b2.ExportSQL.getStatementObj = function() {
  		+ 'WHERE ' + where.join('<br /> AND ');
  	},
 
+	toString2: function() {
+	    var sql = '';
+
+	    sql += 'SELECT [ausgewaehlte Spalten]<br />'
+		+ 'FROM [relevante Tabellen]<br />'
+		+ 'WHERE [PSID einer Tabelle] IN(<br /><br />';
+
+	    for (var i = 0; i < this.itemGroups.length; i++) {
+		sql += this.itemGroups[i].toString2();
+		if (i < this.itemGroups.length - 1) {
+		    sql += '<br /><br />INTERSECT<br /><br />';
+		}
+	    }
+	    
+	    return  sql + '<br /><br />)';
+	},
+
 	/**
 	 * transformes an array of table expressions to a string
 	 * joins are realised as FULL (OUTER) JOIN
@@ -572,6 +589,51 @@ i2b2.ExportSQL.getStatementObj = function() {
 			+ '(' + constraints.join(' OR ') + ')';
  	    	},
 
+		toString2: function() {
+		    var sql = '';
+
+		    sql += 'SELECT [PSID einer Tabelle] AS "PSID"<br />FROM '
+			+ this.tableArrayToString(this.tables) + '<br />'
+			+ 'WHERE ' + this.toString();
+
+		    return sql;
+		},
+		    
+		/**
+		 * transformes an array of table expressions to a string
+		 * joins are realised as FULL (OUTER) JOIN
+		 *
+		 * @param {Object} array - array of table expressions
+		 *
+		 * @return {string} SQL
+		 */
+		tableArrayToString: function(array) {
+		    var sql = '';
+		    var prevTable;
+
+		    for (var i = 0; i < array.length; i++) {
+			if (prevTable) {
+			    var prevSatzart    = String(prevTable).replace(/(.*?)(SA\d\d\d)(.*)/, '$2');
+			    var curSatzart     = String(array[i]).replace(/(.*?)(SA\d\d\d)(.*)/, '$2');
+			    var joinConstraint = '';
+	
+			    if (prevSatzart == curSatzart) {
+				joinConstraint = '<br />USING (' + curSatzart + '_PSID)<br />';
+			    } else {
+				joinConstraint = '<br />ON (' + prevSatzart + '_PSID = ' + curSatzart + '_PSID)<br />';
+			    }
+	
+			    sql += '<br />FULL JOIN<br />' + array[i] + joinConstraint;
+			} else {
+			    sql += array[i];
+			}
+    
+			prevTable = array[i];
+		    }
+	
+		    return sql;
+		},
+
 		/**
 		 * @return {Object} tables array
 		 */
@@ -609,7 +671,6 @@ i2b2.ExportSQL.getStatementObj = function() {
 				table += ' UNION ALL ';
 				alias += '_';
 			    }
-			    alert(alias);
 			}
 			table = '(' + table + ') ' + alias;
 		    }

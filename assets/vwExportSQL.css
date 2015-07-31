@@ -31,20 +31,49 @@ DIV#ExportSQL-mainDiv DIV.droptrgtlbl {
 	float: left;
 	font-weight:bold;
 	color:#666;
-	margin: 15px 10px 0px 0px;
+	margin: 7px 10px 0px 10px;
 }
 DIV#ExportSQL-mainDiv DIV.droptrgt {
 	padding: 5px 10px;
 	background: #DEEBEF;
-	margin-top: 15px;
+	margin-top: 7px;
 	text-align:left;
 	border: 1px solid #63758C;
 	width:300px;
 	overflow:hidden; 
 	float: left;
 }
-
-
+DIV#ExportSQL-mainDiv DIV.generateBox {
+    background: #6677AA;
+    border: 1px solid #667788;
+    font-weight: bold;
+    font-family: arial,helvetica;
+    font-size:11px;
+    height: 16px;
+    line-height: 16px;
+    text-align: center;
+    color: #FFF;
+    cursor: pointer;
+    float: left;
+    margin: 12px 5px 0px 20px;
+    width: 72px;
+    overflow: hidden;
+}
+DIV#ExportSQL-mainDiv DIV.generateBox a {
+    color: #FFF;
+    display: block;
+    text-decoration: none;
+}
+DIV#ExportSQL-mainDiv DIV.bar {
+    background: #BBCCEE none repeat scroll 0%;
+    border: 1px solid #667788;
+    overflow: hidden;
+    width: auto;
+    height: 40px;
+    position: relative;
+    clear: both;
+    margin-top: 5px;
+}
 
 /*** CSS for the View Results tab ***/
 
