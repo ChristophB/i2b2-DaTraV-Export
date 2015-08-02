@@ -1,16 +1,26 @@
 /* this function is called after the HTML is loaded into the viewer DIV */
 i2b2.ExportSQL.Init = function(loadedDiv) {
-    // register DIV as valid DragDrop target for Query Master (QM) objects
-    var divName = 'ExportSQL-QMDROP';
-    // register for drag drop events for the following data types: QM, (QI?)
-    var op_trgt = {dropTarget:true};
-    i2b2.sdx.Master.AttachType(divName, 'QM', op_trgt);	
-    // route event callbacks to a single drop event handler used by this plugin
-    var eventRouterFunc = (function(sdxData) { i2b2.ExportSQL.doDrop(sdxData); });
-    i2b2.sdx.Master.setHandlerCustom(divName, 'QM', 'DropHandler', eventRouterFunc);
+    var qmDivName      = 'ExportSQL-QMDROP';
+    var conceptDivName = 'ExportSQL-IDROP';
+    var op_trgt        = { dropTarget: true };
+    var startYear      = 2009;
+    var endYear        = new Date().getFullYear();
+    var yearOptions    = '<option>---</option>';
 
-    // manage YUI tabs
-    var cfgObj = {activeIndex : 0};
+    for (var year = startYear; year <= endYear; year++) {
+	yearOptions += '<option>' + year + '</option>';
+    }
+    document.getElementById('fromYear').innerHTML = yearOptions;
+    document.getElementById('toYear').innerHTML = yearOptions;
+
+    i2b2.ExportSQL.model.concepts = [];
+    i2b2.sdx.Master.AttachType(qmDivName, 'QM', op_trgt);
+    i2b2.sdx.Master.AttachType(conceptDivName, 'CONCPT', op_trgt);
+
+    i2b2.sdx.Master.setHandlerCustom(qmDivName, 'QM', 'DropHandler', function(sdxData) { i2b2.ExportSQL.doDrop(sdxData); });
+    i2b2.sdx.Master.setHandlerCustom(conceptDivName, 'CONCPT', 'DropHandler', function(sdxData) { i2b2.ExportSQL.doDropConcept(sdxData); });
+
+    var cfgObj = { activeIndex : 0 };
     this.yuiTabs = new YAHOO.widget.TabView('ExportSQL-TABS', cfgObj);
 };
 
@@ -20,13 +30,30 @@ i2b2.ExportSQL.Unload = function() {
 };
 
 i2b2.ExportSQL.doDrop = function(sdxData) {
-    sdxData = sdxData[0];	// only interested in first record
-    // save the info to our local data model
+    sdxData = sdxData[0];
     i2b2.ExportSQL.model.currentRec = sdxData;
-    // let the user know that the drop was successful by displaying the name of the object
-    $("ExportSQL-QMDROP").innerHTML = i2b2.h.Escape(sdxData.sdxInfo.sdxDisplayName);
-    // optimization to prevent requerying the hive for new results if the input dataset has not changed
+
+    $('ExportSQL-QMDROP').innerHTML = i2b2.h.Escape(sdxData.sdxInfo.sdxDisplayName);
+
     i2b2.ExportSQL.model.dirtyResultsData = true;		
+}
+
+i2b2.ExportSQL.doDropConcept = function(sdxData) {
+    sdxData = sdxData[0];
+    sdxData.sdxInfo.sdxKeyValue = sdxData.sdxInfo.sdxKeyValue.replace(/(.*?)(SA\d\d\d.*?)(\\.*)/, '$2');
+    if (!sdxData.sdxInfo.sdxKeyValue.match(/SA\d\d\d/)) 
+	return;
+
+    i2b2.ExportSQL.model.concepts.push(sdxData);
+    i2b2.ExportSQL.model.concepts = i2b2.ExportSQL.uniqueElements(i2b2.ExportSQL.model.concepts);
+    i2b2.ExportSQL.redrawConceptDiv();
+    i2b2.ExportSQL.model.dirtyResultsData = true;
+}
+
+i2b2.ExportSQL.redrawConceptDiv = function() {
+    $('ExportSQL-IDROP').innerHTML = i2b2.ExportSQL.model.concepts.map(
+	function(x) { return x.sdxInfo.sdxDisplayName + ' - ' + x.sdxInfo.sdxKeyValue; }
+    ).join('<br>');
 }
 
 /* Refresh the display with info of the SDX record that was DragDropped */
@@ -41,7 +68,7 @@ i2b2.ExportSQL.getResults = function() {
 
     var tempTables = i2b2.ExportSQL.uniqueElements(result[0].match(/temp_group_g\d+ /g));
 
-    result[0] += '<br><br>' + i2b2.ExportSQL.processItems(tempTables, new Array('item1', 'item2'));
+    result[0] += '<br><br>' + i2b2.ExportSQL.processItems(tempTables);
 
     $$("DIV#ExportSQL-mainDiv DIV#ExportSQL-TABS DIV.results-directions")[0].hide();
     $$("DIV#ExportSQL-mainDiv DIV#ExportSQL-TABS DIV.results-invalidQuery")[0].hide();
@@ -176,7 +203,7 @@ i2b2.ExportSQL.processQM = function(qm_id, outerPanelNumber, outerExclude) {
     sql = statement.toString2() + sql + resultSql;
 
     return new Array(sql, results.msgResponse); // for test purpose
-
+}
     // 	// Determine what item this is
     // 	if (ckey.startsWith("query_master_id")) {
     // 	    var o = new Object;
@@ -377,7 +404,7 @@ i2b2.ExportSQL.processQM = function(qm_id, outerPanelNumber, outerExclude) {
     //     }
     //     dObj.panels[po.panel_num] = po;
     // }
-}
+
 
 /**
  * transforms a string to an array containing year, month and day
@@ -401,7 +428,7 @@ i2b2.ExportSQL.extractDate = function(string) {
 	
 	return date;
     } else {
-	return false;
+	return null;
     }
 }
 
@@ -448,18 +475,33 @@ i2b2.ExportSQL.tableArrayToString = function(array) {
  *
  * @return {string} select statement
  */
-i2b2.ExportSQL.processItems = function(tempTables, items) {
+i2b2.ExportSQL.processItems = function(tempTables) {
     var sql          = '';
-    var tables       = i2b2.ExportSQL.tableArrayToString(new Array('[relevante tabellen]'));
-    var satzart      = tables.replace(/(.*?)(SA\d\d\d)(.*)/, '$2');
     var inConstraint = i2b2.ExportSQL.generateInConstraintForTables(tempTables);
+    var items        = i2b2.ExportSQL.model.concepts.map(function(x) { return x.sdxInfo.sdxKeyValue; });
+    var tablespace   = '[TABLESPACE]';
+    var statement    = i2b2.ExportSQL.getStatementObj();
+    var fromYear     = document.getElementById('fromYear');
+    var toYear       = document.getElementById('toYear');
 
-    var tablespace = '[TABLESPACE]';
+    fromYear = fromYear.options[fromYear.selectedIndex].text;
+    toYear   = toYear.options[toYear.selectedIndex].text;
+    
+    var fromDate = fromYear == '---' ? null : i2b2.ExportSQL.extractDate(fromYear);
+    var toDate   = toYear == '---' ? null : i2b2.ExportSQL.extractDate(toYear);
 
+    statement.addItemGroup(1, 0, 'ANY', 1, 1, fromDate, toDate);
+    for (var i = 0; i < items.length; i++) {
+	statement.addItem(items[i]);
+    }
+    
+    var tables  = statement.getTablesStringLatestGroup();
+    var satzart = tables.replace(/(.*?)(SA\d\d\d)(.*)/, '$2'); 
+    
     sql += 'SELECT ' + items.join(', ') + '<br>'
 	+ 'FROM ' + tables + '<br>'
-	+ 'WHERE ' + satzart + '_PSID2 IN(<br>SELECT psid FROM ' + tablespace + '.temp_result<br>);';
-
+	+ 'WHERE [CASE] ' + satzart + '_PSID2 IN(<br>SELECT psid FROM ' + tablespace + '.temp_result<br>);';
+    
     return sql;
 }
 
@@ -487,7 +529,7 @@ i2b2.ExportSQL.getStatementObj = function() {
 		from = from.concat(this.itemGroups[i].getTables());
 		where.push(this.itemGroups[i].toString());
 	    }
-
+	    
 	    return 'SELECT *<br>'
  		+ 'FROM ' + i2b2.ExportSQL.tableArrayToString(from) + '<br>'
  		+ 'WHERE ' + where.join('<br> AND ');
@@ -502,6 +544,12 @@ i2b2.ExportSQL.getStatementObj = function() {
 	    return this.itemGroups.map(
 		function(x) { return x.toString2(); }
 	    ).join('<br><br>');
+	},
+	
+	getTablesStringLatestGroup: function() {
+	    return i2b2.ExportSQL.tableArrayToString(
+		this.getLatestItemGroup().getTables()
+	    );
 	},
 
  	/**
@@ -619,7 +667,7 @@ i2b2.ExportSQL.getStatementObj = function() {
 		    if (!this.dateFrom 
 			|| (this.dateFrom && this.dateTo 
 			    && this.dateFrom.Year > this.dateTo.Year)
-		       ) { // missing or invalid from-date
+		       ) { // missing or invalid from-date 
 			table = this.extractTableWithTablespace(dimdiColumn);
 			alias = this.extractTable(dimdiColumn);
 		    } else if (this.dateFrom 
@@ -686,7 +734,7 @@ i2b2.ExportSQL.getStatementObj = function() {
 		extractTable: function(dimdiColumn, year) {
 		    var satzart = dimdiColumn.replace(/(SA\d\d\d)(.*)/, '$1');
 		    if (!year) year = '[AUSGLEICHSJAHR]';
- 
+
 		    return 'V' + year + satzart;
 		},
 
@@ -820,15 +868,17 @@ i2b2.ExportSQL.getStatementObj = function() {
 			    return 'integer';
 			}
  	    	    };
-
+		    
 		    this.items.push(item);
 		    this.addTableForColumn(dimdiColumn);
  	    	}
  	    };
-
+	    
  	    this.itemGroups.push(itemGroup);
  	}
     }
-
+    
     return statement;
 }
+
+
