@@ -64,11 +64,16 @@ i2b2.ExportSQL.getResults = function() {
     var dropRecord = i2b2.ExportSQL.model.currentRec;
     var qm_id      = dropRecord.sdxInfo.sdxKeyValue;
     var sdxDisplay = $$("DIV#ExportSQL-mainDiv DIV#ExportSQL-InfoSDX")[0];
-    var result     = i2b2.ExportSQL.processQM(qm_id);
+    
+    try {
+	var result     = i2b2.ExportSQL.processQM(qm_id);
+	var tempTables = i2b2.ExportSQL.uniqueElements(result[0].match(/temp_group_g\d+ /g));
 
-    var tempTables = i2b2.ExportSQL.uniqueElements(result[0].match(/temp_group_g\d+ /g));
-
-    result[0] += '<br><br>' + i2b2.ExportSQL.processItems(tempTables);
+	result[0] += '<br><br>' + i2b2.ExportSQL.processItems(tempTables);
+    } catch (e) {
+	alert(e);
+	return;
+    }
 
     $$("DIV#ExportSQL-mainDiv DIV#ExportSQL-TABS DIV.results-directions")[0].hide();
     $$("DIV#ExportSQL-mainDiv DIV#ExportSQL-TABS DIV.results-invalidQuery")[0].hide();
@@ -492,7 +497,7 @@ i2b2.ExportSQL.processItems = function(tempTables) {
 
     statement.addItemGroup(1, 0, 'ANY', 1, 1, fromDate, toDate);
     for (var i = 0; i < items.length; i++) {
-	statement.addItem(items[i]);
+	statement.addItem(items[i], 'A');
     }
     
     var tables  = statement.getTablesStringLatestGroup();
@@ -529,6 +534,9 @@ i2b2.ExportSQL.getStatementObj = function() {
 		from = from.concat(this.itemGroups[i].getTables());
 		where.push(this.itemGroups[i].toString());
 	    }
+
+	    if (from.length == 0) throw 'toString(): from clause is empty';
+	    if (where.length == 0) throw 'toString(): where clause is empty';
 	    
 	    return 'SELECT *<br>'
  		+ 'FROM ' + i2b2.ExportSQL.tableArrayToString(from) + '<br>'
@@ -547,6 +555,7 @@ i2b2.ExportSQL.getStatementObj = function() {
 	},
 	
 	getTablesStringLatestGroup: function() {
+	    if (!this.getLatestItemGroup()) throw 'getTablesStringLatestGroup(): no itemGroups in statement';
 	    return i2b2.ExportSQL.tableArrayToString(
 		this.getLatestItemGroup().getTables()
 	    );
@@ -560,8 +569,9 @@ i2b2.ExportSQL.getStatementObj = function() {
 	 * @param {string} value - value the item is matched to
 	 */
  	addItem: function(item_key, icon, operator, value) {
-	    if (item_key)
- 		this.getLatestItemGroup().addItem(item_key, icon, operator, value);
+	    if (!item_key) throw 'addItem(): parameter item_key is null';
+	    if (!icon) throw 'addItem(): parameter icon is null';
+	    this.getLatestItemGroup().addItem(item_key, icon, operator, value);
  	},
 
 	/**
@@ -581,6 +591,7 @@ i2b2.ExportSQL.getStatementObj = function() {
 	 * @param {string} table - table expression 
 	 */
  	addTable: function(table) {
+	    if (!table) throw 'addTable(): parameter table is null';
  	    if (this.tables.indexOf(table) < 0)
  		this.tables.push(table);
  	},
@@ -588,16 +599,20 @@ i2b2.ExportSQL.getStatementObj = function() {
  	/**
 	 * starts a new item group with specified constraints
 	 *
-	 * @param {integer} number -
-	 * @param {integer} exclude - 
+	 * @param {integer} number - number of the group
+	 * @param {integer} exclude - 1 if the group is negated
 	 * @param {string} timing - 
-	 * @param {integer} occurences - 
+	 * @param {integer} occurences - least number of times a constraint has to be true
 	 * @param {integer} accuracy - 
 	 * @param {Object} dateFrom - start date for observation
 	 * @param {Object} dateTo - end date for obserfation
 	 */
  	addItemGroup: function(number, exclude, timing, occurences, accuracy, dateFrom, dateTo) {
- 	    var itemGroup = {
+	    if (!number) throw 'addItemGroup(): parameter number is null';
+ 	    if (!occurences) throw 'addItemGroup(): parameter occurences is null';
+	    if (!dateFrom) throw 'addItemGroup(): parameter dateFrom is null';
+
+	    var itemGroup = {
 		number    : number,
  	     	exclude   : exclude,
 		timing    : timing,
@@ -624,15 +639,23 @@ i2b2.ExportSQL.getStatementObj = function() {
 		    return sql;
  	    	},
 
+		/**
+		 * returns the createstatement for the temporary table of the group, except all subqueries
+		 *
+		 * @return {string} create statement
+		 */
 		toString2: function() {
 		    if (this.items.length == 0)
 			return 'CREATE TEMPORARY TABLE [TABLESPACE].' + this.getTempTableName() + '(psid integer);';
 
+		    if (this.tables.length == 0) throw 'toString2(): no tables for the group available';
 		    return 'CREATE TEMPORARY TABLE [TABLESPACE].' + this.getTempTableName() + ' AS (<br>'
 			+ 'SELECT CASE '
 			+ this.tables.map(
 			    function(x) {
-				var satzart = x.replace(/(.*?)(SA\d\d\d)(.*)/, '$2');
+				var satzartNr = x.replace(/(.*?)(SA)(\d\d\d)(.*)/, '$3');
+				var satzart   = 'SA' + satzartNr;
+				if (isNaN(satzartNr)) throw 'toString2(): tablename does not contain a satzartNr';
 				return satzart + '_PSID2 IS NOT NULL THEN ' + satzart + '_PSID2';
 			    }
 			).join(' ELSE ') + ' ELSE NULL END AS psid<br>'
@@ -642,13 +665,21 @@ i2b2.ExportSQL.getStatementObj = function() {
 		},
 
 		/**
+		 * returns all tables of the group as array
+		 *
 		 * @return {Object} tables array
 		 */
 		getTables: function() {
 		    return this.tables;
 		},
 
+		/**
+		 * returns name of the temporary table
+		 *
+		 * @return {string} tablename
+		 */
 		getTempTableName: function() {
+		    if (!this.number) throw 'getTempTableName(): number is null';
 		    return 'temp_group_' + this.number;
 		},
 
@@ -661,22 +692,22 @@ i2b2.ExportSQL.getStatementObj = function() {
 		 * @return {Object} array with table and alias 
 		 */
 		getTableWithAliasForColumn: function(dimdiColumn) {
+		    if (!dimdiColumn) throw 'getTableWithAliasForColumn(): parameter dimdiColumn is null';
 		    var table = '';
 		    var alias = '';
 
-		    if (!this.dateFrom 
-			|| (this.dateFrom && this.dateTo 
-			    && this.dateFrom.Year > this.dateTo.Year)
-		       ) { // missing or invalid from-date 
-			table = this.extractTableWithTablespace(dimdiColumn);
-			alias = this.extractTable(dimdiColumn);
+		    if (!this.dateFrom) {
+			throw 'getTableWithAliasForColumn(): dateFrom is null';
+		    } else if(this.dateFrom && this.dateTo 
+			      && this.dateFrom.Year > this.dateTo.Year
+			     ) {
+			throw 'getTableWithAliasForColumn(): from-year is greater then to-year';
 		    } else if (this.dateFrom 
 			       && (!this.dateTo || this.dateFrom == this.dateTo)
 			      ) { // missing or equal to-date
 			table = this.extractTableWithTablespace(dimdiColumn, this.dateFrom.Year);
 			alias = this.extractTable(dimdiColumn, this.dateFrom.Year);
 		    } else { // from- and to-date given
-
 			for (var i = this.dateFrom.Year; i <= this.dateTo.Year; i++) {
 		    	    table += 'SELECT * FROM ' + this.extractTableWithTablespace(dimdiColumn, i);
 			    alias += this.extractTable(dimdiColumn, i);
@@ -691,10 +722,12 @@ i2b2.ExportSQL.getStatementObj = function() {
 		},
 
 		getTableForColumn: function(dimdiColumn) {
+		    if (!dimdiColumn) throw 'getTableForColumn(): parameter dimdiColumn is null';
 		    return this.getTableWithAliasForColumn(dimdiColumn)[0];
 		},
 
 		getAliasForColumn: function(dimdiColumn) {
+		    if (!dimdiColumn) throw 'getAliasForColumn(): parameter dimdiColumn is null';
 		    return this.getTableWithAliasForColumn(dimdiColumn)[1];
 		},
 
@@ -705,6 +738,7 @@ i2b2.ExportSQL.getStatementObj = function() {
 		 * @param {string} dimdiColumn - valid dimdi database column name
 		 */
 		addTableForColumn: function(dimdiColumn) {
+		    if (!dimdiColumn) throw 'addTableForColumn(): parameter dmdiColumn is null';
 		    var table = this.getTableWithAliasForColumn(dimdiColumn).join(' ');
 
 		    if (this.tables.indexOf(table) < 0)
@@ -715,11 +749,14 @@ i2b2.ExportSQL.getStatementObj = function() {
 		 * returns the dimdi db table and tablespace, which contains the given dimdi column and year
 		 *
 		 * @param {string} dimdiColumn - valid column name of the dimdi database
-		 * @param {integer} year - Ausgleichsjahr (optional)
+		 * @param {integer} year - Ausgleichsjahr
 		 *
 		 * @return {string} table name with tablespace
 		 */
  		extractTableWithTablespace: function(dimdiColumn, year) {
+		    if (!dimdiColumn) throw 'extractTableWithTablespace(): parameter dimdiColumn is null';
+		    if (!year) throw 'extractTableWithTablespace(): parameter year is null';
+		    
  		    return '[TABLESPACE].' + this.extractTable(dimdiColumn, year);
  		},
 
@@ -727,15 +764,19 @@ i2b2.ExportSQL.getStatementObj = function() {
 		 * returns the dimdi db table, which contains the given dimdi column and year
 		 *
 		 * @param {string} dimdiColumn - valid column name of the dimdi database
-		 * @param {integer} year - Ausgleichsjahr (optional)
+		 * @param {integer} year - Ausgleichsjahr
 		 *
 		 * @return {string} table name
 		 */
 		extractTable: function(dimdiColumn, year) {
-		    var satzart = dimdiColumn.replace(/(SA\d\d\d)(.*)/, '$1');
-		    if (!year) year = '[AUSGLEICHSJAHR]';
+		    if (!dimdiColumn) throw 'extractTable(): parameter dimdiColumn is null';
+		    if (!year) throw 'extractTable(): parameter year is null';
 
-		    return 'V' + year + satzart;
+		    var satzartNr = dimdiColumn.replace(/(SA)(\d\d\d)(.*)/, '$2');
+
+		    if (isNaN(satzartNr)) throw 'extractTable(): dimdiColumn does not contain a satzartNr';
+
+		    return 'V' + year + 'SA' + satzartNr;
 		},
 
 		/** 
@@ -746,6 +787,9 @@ i2b2.ExportSQL.getStatementObj = function() {
 		 * @param {string} value - the value the item is matched to
 		 */
  	    	addItem: function(item_key, icon, operator, value) {
+		    if (!item_key) throw 'addItem(): parameter item_key is null';
+		    if (!icon) throw 'addItem(): parameter icon is null';
+
 		    var dimdiColumn = item_key.replace(/(.*\\)(SA.*?)(\\.*)/, '$2');
  	    	    var table       = this.getTableForColumn(dimdiColumn);
 		    var alias       = this.getAliasForColumn(dimdiColumn);
@@ -759,12 +803,6 @@ i2b2.ExportSQL.getStatementObj = function() {
 			alias      : alias,
 			occurences : this.occurences,
 			icon       : icon,
-			/**
-			 * @return {string} dimdiColumn 
-			 */
- 	    		getDimdiColumn: function() {
- 	    		    return this.dimdiColumn;
- 	    		},
 
 			/**
 			 * transforms the item to SQL
@@ -772,13 +810,22 @@ i2b2.ExportSQL.getStatementObj = function() {
 			 * @return {string} SQL string build from dimdiColumn, operator and value
 			 */
  	    		toString: function() {
+			    if (!this.dimdiColumn) throw 'toString(): dimdiColumn is null';
+			    if (!this.item_key) throw 'toString(): item_key is null';
+			    if (!this.icon) throw 'toString(): icon is null';
+			    if (!this.occurences) throw 'toString(): occurences is null';
+			    if (!this.alias) throw 'toString(): alias is null';
+
 			    var sql        = '';
 			    var constraint = '';
-			    var satzart    = this.dimdiColumn.replace(/(SA\d\d\d)(.*)/, '$1');
+			    var satzartNr  = this.dimdiColumn.replace(/(SA)(\d\d\d)(.*)/, '$2');
 			    var value      = this.item_key.replace(/(.*?\\)([^\\]*?)(\\$)/, '$2');
 			    var regExp     = new RegExp('(.*?' + this.dimdiColumn + '\\\\)([^\\\\]*)(\\\\.*)');
 			    var catalogue  = this.item_key.replace(regExp, '$2');
+			    var satzart    = 'SA' + satzartNr;
 
+			    if (isNaN(satzartNr)) throw 'toString(): dimdiColumn does not contain a satzartNr';
+			    
 			    if (this.operator) {
  	    			constraint = this.dimdiColumn + ' ' 
 				    + this.getModifiedOperator() + ' '
@@ -789,11 +836,10 @@ i2b2.ExportSQL.getStatementObj = function() {
 			    } else {
 				constraint = this.dimdiColumn + ' IS NOT NULL';
 			    }
-
 			    if (this.occurences > 1) {
 				sql = this.occurences + ' <= '
 				    + '(SELECT count(*)'
-				    + ' FROM ' + table
+				    + ' FROM ' + this.table
 				    + ' WHERE ' + constraint
 				    + '       AND ' + satzart + '_PSID2 = ' + this.alias + '.' + satzart + '_PSID2'
 				    + ')';
@@ -819,23 +865,23 @@ i2b2.ExportSQL.getStatementObj = function() {
 				, 'GE': '>='
 			    };
 
-			    if (sqlMapper[operator])
+			    if (operator != null && sqlMapper[operator])
 				return sqlMapper[operator];
 			    return operator;
 			},
 
 			/** 
 			 * returns the value of the item
-			 * the value is modified, depending on the datatype and operation
+			 * the value is modified, depending on the datatype and operator
 			 *
 			 * @return {string} modified value
 			 */ 
 			getModifiedValue: function() {
 			    var operator_sufix = this.operator.replace(/(.*?\[)(.*?)(\])/, '$2');
-			    var value          = this.value;
 
 			    switch (this.getDatatype()) {
 			    case 'string':
+				var value = this.value;
 				if (operator_sufix == 'contains')
 				    value = '%' + value + '%';
 				if (operator_sufix == 'begin')
@@ -848,7 +894,7 @@ i2b2.ExportSQL.getStatementObj = function() {
 			    case 'integer':
 				return this.value.replace(/'/g, '');
 			    default:
-				return 'no valid datatype for ' + this.dimdiColumn + ' found!';
+				throw 'getModifiedValue(): no valid datatype for ' + this.dimdiColumn + ' found';
 			    }
 			},
 
@@ -858,8 +904,10 @@ i2b2.ExportSQL.getStatementObj = function() {
 			 * @param {string} 'string' or 'integer'
 			 */
 			getDatatype: function() {
+			    if (!this.dimdiColumn) throw 'getDatatype(): dimdiColumn is null';
 			    var satzartNr = this.dimdiColumn.replace(/(SA)(\d\d\d)(.*)/, '$2');
 
+			    if (isNaN(satzartNr)) throw 'getDatatype(): dimdiColumn does not contain a valid satzartNr';
 			    if ((satzartNr == 551 || satzartNr == 651)
 				&& (new RegExp('DIAGNOSE|ICD|QUALIFIZIERUNG')).test(this.dimdiColumn)
 			       )
