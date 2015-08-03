@@ -20,6 +20,8 @@ i2b2.ExportSQL.Init = function(loadedDiv) {
     i2b2.sdx.Master.setHandlerCustom(qmDivName, 'QM', 'DropHandler', function(sdxData) { i2b2.ExportSQL.doDrop(sdxData); });
     i2b2.sdx.Master.setHandlerCustom(conceptDivName, 'CONCPT', 'DropHandler', function(sdxData) { i2b2.ExportSQL.doDropConcept(sdxData); });
 
+    i2b2.ExportSQL.redrawMessagePanel();
+
     var cfgObj = { activeIndex : 0 };
     this.yuiTabs = new YAHOO.widget.TabView('ExportSQL-TABS', cfgObj);
 };
@@ -29,13 +31,50 @@ i2b2.ExportSQL.Unload = function() {
     return true;
 };
 
+i2b2.ExportSQL.setYear = function() {
+    var fromYear = document.getElementById('fromYear');
+    var toYear   = document.getElementById('toYear');
+
+    fromYear = fromYear.options[fromYear.selectedIndex].text;
+    toYear   = toYear.options[toYear.selectedIndex].text;
+    
+    i2b2.ExportSQL.model.fromYear = fromYear;
+    i2b2.ExportSQL.model.fromYear = fromYear;
+
+    i2b2.ExportSQL.checkModel();
+}
+
+i2b2.ExportSQL.redrawMessagePanel = function() {
+    document.getElementById('messagePanel').innerHTML
+	= '<ol>'
+	+ (i2b2.ExportSQL.model.currentRec ? '' : '<b>') + '<li>'
+	+ 'Drop a previous executed Query from the bottom left "Previous Queries" window. ' + (i2b2.ExportSQL.model.currentRec ? '&#10004;</li>' : '</li></b>') 
+	+ (isNaN(i2b2.ExportSQL.model.fromYear) ? '<b>' : '') + '<li>' 
+	+ 'Specify at least a start-year. ' + (isNaN(i2b2.ExportSQL.model.fromYear) ? '</li></b>' : '&#10004;</li>') 
+	+ (i2b2.ExportSQL.model.concepts && i2b2.ExportSQL.model.concepts.length > 0 ? '' : '<b>') + '<li>' 
+	+ 'Drop some concepts (no catalogues). ' + (i2b2.ExportSQL.model.concepts && i2b2.ExportSQL.model.concepts.length > 0 ? '&#10004;</li>' : '</li></b>') 
+	+ '</ol>';
+}
+
 i2b2.ExportSQL.doDrop = function(sdxData) {
     sdxData = sdxData[0];
     i2b2.ExportSQL.model.currentRec = sdxData;
 
     $('ExportSQL-QMDROP').innerHTML = i2b2.h.Escape(sdxData.sdxInfo.sdxDisplayName);
 
-    i2b2.ExportSQL.model.dirtyResultsData = true;		
+    i2b2.ExportSQL.checkModel();		
+}
+
+i2b2.ExportSQL.checkModel = function() {
+    if (!isNaN(i2b2.ExportSQL.model.fromYear)
+	&& i2b2.ExportSQL.model.concepts && i2b2.ExportSQL.model.concepts.length > 0
+	&& i2b2.ExportSQL.model.currentRec
+       ) {
+	i2b2.ExportSQL.model.dirtyResultsData = true;
+    } else
+	i2b2.ExportSQL.model.dirtyResultsData = false;
+    
+    i2b2.ExportSQL.redrawMessagePanel();
 }
 
 i2b2.ExportSQL.doDropConcept = function(sdxData) {
@@ -48,7 +87,8 @@ i2b2.ExportSQL.doDropConcept = function(sdxData) {
     i2b2.ExportSQL.model.concepts.push(sdxData);
     i2b2.ExportSQL.model.concepts = i2b2.ExportSQL.uniqueElements(i2b2.ExportSQL.model.concepts);
     i2b2.ExportSQL.redrawConceptDiv();
-    i2b2.ExportSQL.model.dirtyResultsData = true;
+    
+    i2b2.ExportSQL.checkModel();
 }
 
 i2b2.ExportSQL.deleteItem = function(sdxKeyValue) {
@@ -61,7 +101,8 @@ i2b2.ExportSQL.deleteItem = function(sdxKeyValue) {
     i2b2.ExportSQL.model.concepts = concepts;
     i2b2.ExportSQL.model.concepts = i2b2.ExportSQL.uniqueElements(i2b2.ExportSQL.model.concepts);
     i2b2.ExportSQL.redrawConceptDiv();
-    i2b2.ExportSQL.model.dirtyResultsData = true;
+
+    i2b2.ExportSQL.checkModel();
 }
 
 i2b2.ExportSQL.redrawConceptDiv = function() {    
