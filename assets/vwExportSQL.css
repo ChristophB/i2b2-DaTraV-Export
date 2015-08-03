@@ -1,7 +1,8 @@
 /*** CSS for main plugin wrapper ***/
 
 DIV#ExportSQL-mainDiv {
-	padding: 0px;
+    padding: 0px;
+    height: 100%;
 }
 
 
@@ -31,16 +32,16 @@ DIV#ExportSQL-mainDiv DIV.droptrgtlbl {
 	float: left;
 	font-weight:bold;
 	color:#666;
-	margin: 7px 10px 0px 10px;
+	margin: 7px 10px 7px 10px;
 }
 DIV#ExportSQL-mainDiv DIV.droptrgt {
 	padding: 5px 10px;
 	background: #DEEBEF;
-	margin-top: 7px;
-	text-align:left;
+	margin: 7px 0px 7px 0px;
+	text-align: left;
 	border: 1px solid #63758C;
-	width:300px;
-	overflow:hidden; 
+	width: 300px;
+	overflow: hidden; 
 	float: left;
 }
 DIV#ExportSQL-mainDiv DIV.generateBox {
@@ -65,14 +66,44 @@ DIV#ExportSQL-mainDiv DIV.generateBox a {
     text-decoration: none;
 }
 DIV#ExportSQL-mainDiv DIV.bar {
-    background: #BBCCEE none repeat scroll 0%;
+    background: #CEDBEF none repeat scroll 0%;
     border: 1px solid #667788;
     overflow: hidden;
     width: auto;
-    height: 100px; /* 40 */
+    height: auto; /*43px;*/
     position: relative;
     clear: both;
-    margin-top: 5px;
+    margin: 5px 0px 5px 0px;
+}
+DIV#ExportSQL-mainDiv select.selectYear {
+    background: #DEEBEF;
+    margin-top: 12px;
+    float: left;
+    width: auto;
+}
+DIV#ExportSQL-mainDiv DIV.elementGroup {
+    background: #BBCCEE none repeat scroll 0%;
+    padding: 2px 5px 5px 5px;
+    border: 1px solid #667788;
+    height: auto;
+    overflow: auto;
+    width: auto;
+    position: relative;
+}
+DIV#ExportSQL-mainDiv DIV.messagePanel {
+    height: 200px;
+    float: right;
+    width: 40%;
+    margin: 7px 0px 7px 6px;
+    border: 1px solid #667788;
+    background: #CEDBEF;
+    padding: 5px 5px 5px 5px;
+}
+DIV#ExportSQL-mainDiv span.dropedItem {
+    padding: 7px 5px 2px 5px;
+}
+DIV#ExportSQL-mainDiv span.dropedItem:hover {
+    background: #DEEBEF;
 }
 
 /*** CSS for the View Results tab ***/

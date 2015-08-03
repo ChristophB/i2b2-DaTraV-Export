@@ -12,34 +12,29 @@
 	  <div>
 	    <div class="ExportSQL-MainContent">
 	      <div class="ExportSQL-MainContentPad">
-		<div>Drop an i2b2 object such as a search term or previous query onto the input box below, and then click the "View Results" tab for information about that object.</div>
-		<div class="bar">  
-		  <div class="droptrgtlbl">i2b2 Object:</div>
-		  <div class="droptrgt SDX-PRS" id="ExportSQL-QMDROP">Drop an object here</div>
-		  <div class="generateBox"><a href="JavaScript:i2b2.ExportSQL.getResults()"><span id="generateBoxText">Generate SQL</span></a></div>
-		  <label for="fromYear">From year:</label><select style="width:auto" id="fromYear" onchange="i2b2.ExportSQL.model.dirtyResultsData = true;"></select>
-		  <label for="toYear">To year:</label><select style="width:auto" id="toYear" onchange="i2b2.ExportSQL.model.dirtyResultsData = true;"></select>
-		  <br>
-		  <div class="droptrgt items" id="ExportSQL-IDROP">Drop concepts here</div>
+		<div class="elementGroup">
+		  <div class="bar">  
+		    <div class="droptrgtlbl">i2b2 Object:</div>
+		    <div class="droptrgt SDX-PRS" id="ExportSQL-QMDROP">Drop an object here</div>
+		    <div class="droptrgtlbl">From year:</div>
+		    <select class="selectYear" id="fromYear" onchange="i2b2.ExportSQL.model.dirtyResultsData = true;"></select>
+		    <div class="droptrgtlbl">To year:</div>
+		    <select class="selectYear" id="toYear" onchange="i2b2.ExportSQL.model.dirtyResultsData = true;"></select>
+		    <div class="generateBox"><a href="JavaScript:i2b2.ExportSQL.getResults()"><span id="generateBoxText">Generate SQL</span></a></div>
+		  </div>
+		  <div class="droptrgt items" style="overflow:auto; height:200px; width:50%; background:white;" id="ExportSQL-IDROP">Drop concepts here</div>
+		  <div class="messagePanel" id="messagePanel">
+		    You must first provide an i2b2 query object. Please return to the "Specify Data" tab then drag and drop an i2b2 query object onto the input box.
+		  </div>
 		</div>
-	      </div>
-	      <div class="results-directions">
-		You must first provide an i2b2 query object. Please return to the "Specify Data" tab then drag and drop an i2b2 query object onto the input box.
-	      </div>
-	      <div class="results-working" style="display:none;"></div>
-	      <div class="results-hlevelError" style="display:none;">
-		<b>The selected query object is not supported.</b> Make sure you drag and drop a query (containing only items/questions) onto the input box in the "Specify Data" tab.
-	      </div>
-	      <div class="results-invalidQuery" style="display:none;">
-		<b>The selected query object was invalid or empty.</b> Please return to the "Specify Data" tab then drag and drop an other i2b2 query object onto the input box.
-	      </div>
-	      <div class="results-finished" style="display:none;">
-		<div class="results-text">The following information was passed to the plugin in the i2b2 object:<UL></UL></div>
-		<div id="ExportSQL-InfoSDX">
-		  <table>
-		    <tr><th>SQL Statement</th><td class="sql"></td></tr>
-		    <tr><th>Msg Response</th><td class="msgResponse"></td></tr>
-		  </table>
+		<br>
+		<div class="results-finished" style="display:none; float:left;">
+		  <div id="ExportSQL-InfoSDX">
+		    <table>
+		      <tr><th>SQL Statement</th><td class="sql"></td></tr>
+		      <!-- <tr><th>Msg Response</th><td class="msgResponse"></td></tr> -->
+		    </table>
+		  </div>
 		</div>
 	      </div>
 	    </div>

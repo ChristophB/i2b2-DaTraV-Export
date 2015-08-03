@@ -40,8 +40,9 @@ i2b2.ExportSQL.doDrop = function(sdxData) {
 
 i2b2.ExportSQL.doDropConcept = function(sdxData) {
     sdxData = sdxData[0];
-    sdxData.sdxInfo.sdxKeyValue = sdxData.sdxInfo.sdxKeyValue.replace(/(.*?)(SA\d\d\d.*?)(\\.*)/, '$2');
-    if (!sdxData.sdxInfo.sdxKeyValue.match(/SA\d\d\d/)) 
+    sdxData.dimdiColumn = sdxData.sdxInfo.sdxKeyValue.replace(/(.*?\\)(SA\d\d\d.*?)(\\$)/, '$2');
+
+    if (!sdxData.dimdiColumn.match(/SA\d\d\d[^\\]*$/))
 	return;
 
     i2b2.ExportSQL.model.concepts.push(sdxData);
@@ -50,10 +51,33 @@ i2b2.ExportSQL.doDropConcept = function(sdxData) {
     i2b2.ExportSQL.model.dirtyResultsData = true;
 }
 
-i2b2.ExportSQL.redrawConceptDiv = function() {
-    $('ExportSQL-IDROP').innerHTML = i2b2.ExportSQL.model.concepts.map(
-	function(x) { return x.sdxInfo.sdxDisplayName + ' - ' + x.sdxInfo.sdxKeyValue; }
+i2b2.ExportSQL.deleteItem = function(sdxKeyValue) {
+    var concepts = [];
+    for (i = 0; i < i2b2.ExportSQL.model.concepts.length; i++) {
+	var concept = i2b2.ExportSQL.model.concepts[i];
+	if (concept.dimdiColumn != sdxKeyValue)
+	    concepts.push(concept);
+    }
+    i2b2.ExportSQL.model.concepts = concepts;
+    i2b2.ExportSQL.model.concepts = i2b2.ExportSQL.uniqueElements(i2b2.ExportSQL.model.concepts);
+    i2b2.ExportSQL.redrawConceptDiv();
+    i2b2.ExportSQL.model.dirtyResultsData = true;
+}
+
+i2b2.ExportSQL.redrawConceptDiv = function() {    
+    var icon      = 'sdx_ONT_CONCPT_leaf.gif'; // 'sdx_ONT_CONCPT_branch-exp.gif';
+    var innerHTML = i2b2.ExportSQL.model.concepts.map(
+	function(x) { 
+	    return '<span class="dropedItem" onclick="i2b2.ExportSQL.deleteItem(\'' + x.dimdiColumn + '\')" title="' + x.dimdiColumn + '">'
+		+ '<img src="js-i2b2/cells/ONT/assets/' + icon + '">'
+		+ '&nbsp;&nbsp;' + x.sdxInfo.sdxDisplayName
+		+ '</span>';
+	}
     ).join('<br>');
+
+    if (!innerHTML)
+	innerHTML = 'Drop concepts here';
+    $('ExportSQL-IDROP').innerHTML = innerHTML;
 }
 
 /* Refresh the display with info of the SDX record that was DragDropped */
@@ -63,7 +87,7 @@ i2b2.ExportSQL.getResults = function() {
     }
     var dropRecord = i2b2.ExportSQL.model.currentRec;
     var qm_id      = dropRecord.sdxInfo.sdxKeyValue;
-    var sdxDisplay = $$("DIV#ExportSQL-mainDiv DIV#ExportSQL-InfoSDX")[0];
+    var sdxDisplay = $$('DIV#ExportSQL-mainDiv DIV#ExportSQL-InfoSDX')[0];
     
     try {
 	var result     = i2b2.ExportSQL.processQM(qm_id);
@@ -71,18 +95,18 @@ i2b2.ExportSQL.getResults = function() {
 
 	result[0] += '<br><br>' + i2b2.ExportSQL.processItems(tempTables);
     } catch (e) {
-	alert(e);
+	document.getElementById('messagePanel').innerHTML = '<b>' + e + '<b>';
 	return;
     }
 
-    $$("DIV#ExportSQL-mainDiv DIV#ExportSQL-TABS DIV.results-directions")[0].hide();
-    $$("DIV#ExportSQL-mainDiv DIV#ExportSQL-TABS DIV.results-invalidQuery")[0].hide();
-    $$("DIV#ExportSQL-mainDiv DIV#ExportSQL-TABS DIV.results-hlevelError")[0].hide();
+    // $$("DIV#ExportSQL-mainDiv DIV#ExportSQL-TABS DIV.results-directions")[0].hide();
+    // $$("DIV#ExportSQL-mainDiv DIV#ExportSQL-TABS DIV.results-invalidQuery")[0].hide();
+    // $$("DIV#ExportSQL-mainDiv DIV#ExportSQL-TABS DIV.results-hlevelError")[0].hide();
     
     Element.select(sdxDisplay, '.sql')[0].innerHTML 
 	= '<pre>' + result[0] + '</pre>';
-    Element.select(sdxDisplay, '.msgResponse')[0].innerHTML 
-	= '<pre>' + i2b2.h.Escape(result[1]) + '</pre>';
+    // Element.select(sdxDisplay, '.msgResponse')[0].innerHTML 
+    // 	= '<pre>' + i2b2.h.Escape(result[1]) + '</pre>';
     $$("DIV#ExportSQL-mainDiv DIV#ExportSQL-TABS DIV.results-finished")[0].show();
 
     i2b2.ExportSQL.model.dirtyResultsData = false;
@@ -483,7 +507,7 @@ i2b2.ExportSQL.tableArrayToString = function(array) {
 i2b2.ExportSQL.processItems = function(tempTables) {
     var sql          = '';
     var inConstraint = i2b2.ExportSQL.generateInConstraintForTables(tempTables);
-    var items        = i2b2.ExportSQL.model.concepts.map(function(x) { return x.sdxInfo.sdxKeyValue; });
+    var items        = i2b2.ExportSQL.model.concepts.map(function(x) { return x.dimdiColumn; });
     var tablespace   = '[TABLESPACE]';
     var statement    = i2b2.ExportSQL.getStatementObj();
     var fromYear     = document.getElementById('fromYear');
