@@ -3,6 +3,7 @@ i2b2.ExportSQL.Init = function(loadedDiv) {
     var qmDivName      = 'ExportSQL-QMDROP';
     var conceptDivName = 'ExportSQL-IDROP';
     var op_trgt        = { dropTarget: true };
+    var cfgObj         = { activeIndex: 0 };
     var startYear      = 2009;
     var endYear        = new Date().getFullYear();
     var yearOptions    = '<option>---</option>';
@@ -11,9 +12,11 @@ i2b2.ExportSQL.Init = function(loadedDiv) {
 	yearOptions += '<option>' + year + '</option>';
     }
     document.getElementById('fromYear').innerHTML = yearOptions;
-    document.getElementById('toYear').innerHTML = yearOptions;
+    document.getElementById('toYear').innerHTML   = yearOptions;
 
-    i2b2.ExportSQL.model.concepts = [];
+    i2b2.ExportSQL.model.tablespace = 'tablespace';
+    i2b2.ExportSQL.model.concepts   = [];
+
     i2b2.sdx.Master.AttachType(qmDivName, 'QM', op_trgt);
     i2b2.sdx.Master.AttachType(conceptDivName, 'CONCPT', op_trgt);
 
@@ -22,7 +25,6 @@ i2b2.ExportSQL.Init = function(loadedDiv) {
 
     i2b2.ExportSQL.redrawMessagePanel();
 
-    var cfgObj = { activeIndex : 0 };
     this.yuiTabs = new YAHOO.widget.TabView('ExportSQL-TABS', cfgObj);
 };
 
@@ -39,26 +41,38 @@ i2b2.ExportSQL.setYear = function() {
     toYear   = toYear.options[toYear.selectedIndex].text;
     
     i2b2.ExportSQL.model.fromYear = fromYear;
-    i2b2.ExportSQL.model.fromYear = fromYear;
+    i2b2.ExportSQL.model.toYear   = toYear;
 
     i2b2.ExportSQL.checkModel();
 }
 
 i2b2.ExportSQL.redrawMessagePanel = function() {
-    document.getElementById('messagePanel').innerHTML
-	= '<ol>'
-	+ (i2b2.ExportSQL.model.currentRec ? '' : '<b>') + '<li>'
-	+ 'Drop a previous executed Query from the bottom left "Previous Queries" window. ' + (i2b2.ExportSQL.model.currentRec ? '&#10004;</li>' : '</li></b>') 
-	+ (isNaN(i2b2.ExportSQL.model.fromYear) ? '<b>' : '') + '<li>' 
-	+ 'Specify at least a start-year. ' + (isNaN(i2b2.ExportSQL.model.fromYear) ? '</li></b>' : '&#10004;</li>') 
-	+ (i2b2.ExportSQL.model.concepts && i2b2.ExportSQL.model.concepts.length > 0 ? '' : '<b>') + '<li>' 
-	+ 'Drop some concepts (no catalogues). ' + (i2b2.ExportSQL.model.concepts && i2b2.ExportSQL.model.concepts.length > 0 ? '&#10004;</li>' : '</li></b>') 
-	+ '</ol>';
+    var message     = '';
+    var qmText      = 'Drop a previous executed Query from the bottom left "Previous Queries" window.';
+    var yearText    = 'Specify at least a start-year.';
+    var conceptText = 'Drop some concepts (no catalogues).';
+    var fromYear    = i2b2.ExportSQL.model.fromYear;
+    var toYear      = i2b2.ExportSQL.model.toYear;
+    var concepts    = i2b2.ExportSQL.model.concepts;
+
+    if (i2b2.ExportSQL.model.qm)
+	message += '<li>' + qmText + ' &#10004;</li>';
+    else message += '<b><li>' + qmText + '</li></b>';
+ 
+    if (!isNaN(fromYear) && (isNaN(toYear) || fromYear <= toYear))
+	message += '<li>' + yearText + ' &#10004;</li>';
+    else message += '<b><li>' + yearText + '</li></b>';
+	
+    if (concepts && concepts.length > 0)
+	message += '<li>' + conceptText + ' &#10004;</li>';
+    else message += '<b><li>' + conceptText + '</li></b>';
+
+    document.getElementById('messagePanel').innerHTML = '<ol>' + message + '</ol>';
 }
 
 i2b2.ExportSQL.doDrop = function(sdxData) {
     sdxData = sdxData[0];
-    i2b2.ExportSQL.model.currentRec = sdxData;
+    i2b2.ExportSQL.model.qm = sdxData;
 
     $('ExportSQL-QMDROP').innerHTML = i2b2.h.Escape(sdxData.sdxInfo.sdxDisplayName);
 
@@ -66,13 +80,16 @@ i2b2.ExportSQL.doDrop = function(sdxData) {
 }
 
 i2b2.ExportSQL.checkModel = function() {
-    if (!isNaN(i2b2.ExportSQL.model.fromYear)
-	&& i2b2.ExportSQL.model.concepts && i2b2.ExportSQL.model.concepts.length > 0
-	&& i2b2.ExportSQL.model.currentRec
+    var fromYear = i2b2.ExportSQL.model.fromYear;
+    var toYear   = i2b2.ExportSQL.model.toYear;
+    var concepts = i2b2.ExportSQL.model.concepts;
+
+    if (!isNaN(fromYear) && (isNaN(toYear) || fromYear <= toYear)
+	&& concepts && concepts.length > 0
+	&& i2b2.ExportSQL.model.qm
        ) {
 	i2b2.ExportSQL.model.dirtyResultsData = true;
-    } else
-	i2b2.ExportSQL.model.dirtyResultsData = false;
+    } else i2b2.ExportSQL.model.dirtyResultsData = false;
     
     i2b2.ExportSQL.redrawMessagePanel();
 }
@@ -126,8 +143,7 @@ i2b2.ExportSQL.getResults = function() {
     if (!i2b2.ExportSQL.model.dirtyResultsData) {
 	return;
     }
-    var dropRecord = i2b2.ExportSQL.model.currentRec;
-    var qm_id      = dropRecord.sdxInfo.sdxKeyValue;
+    var qm_id      = i2b2.ExportSQL.model.qm.sdxInfo.sdxKeyValue;
     var sdxDisplay = $$('DIV#ExportSQL-mainDiv DIV#ExportSQL-InfoSDX')[0];
     
     try {
@@ -135,20 +151,14 @@ i2b2.ExportSQL.getResults = function() {
 	var tempTables = i2b2.ExportSQL.uniqueElements(result[0].match(/temp_group_g\d+ /g));
 
 	result[0] += '<br><br>' + i2b2.ExportSQL.processItems(tempTables);
+	Element.select(sdxDisplay, '.sql')[0].innerHTML 
+	    = '<pre>' + result[0] + '</pre>';
+	// Element.select(sdxDisplay, '.msgResponse')[0].innerHTML 
+	// 	= '<pre>' + i2b2.h.Escape(result[1]) + '</pre>';
+	$$("DIV#ExportSQL-mainDiv DIV#ExportSQL-TABS DIV.results-finished")[0].show();
     } catch (e) {
-	document.getElementById('messagePanel').innerHTML = '<b>' + e + '<b>';
-	return;
+	alert(e);
     }
-
-    // $$("DIV#ExportSQL-mainDiv DIV#ExportSQL-TABS DIV.results-directions")[0].hide();
-    // $$("DIV#ExportSQL-mainDiv DIV#ExportSQL-TABS DIV.results-invalidQuery")[0].hide();
-    // $$("DIV#ExportSQL-mainDiv DIV#ExportSQL-TABS DIV.results-hlevelError")[0].hide();
-    
-    Element.select(sdxDisplay, '.sql')[0].innerHTML 
-	= '<pre>' + result[0] + '</pre>';
-    // Element.select(sdxDisplay, '.msgResponse')[0].innerHTML 
-    // 	= '<pre>' + i2b2.h.Escape(result[1]) + '</pre>';
-    $$("DIV#ExportSQL-mainDiv DIV#ExportSQL-TABS DIV.results-finished")[0].show();
 
     i2b2.ExportSQL.model.dirtyResultsData = false;
 }
@@ -167,18 +177,25 @@ i2b2.ExportSQL.uniqueElements = function(array) {
     return result;
 }
 
+/**
+ * generates "create temporary table" statements for a given QM-ID
+ * this function is called recursively, if the specified query contains subqueries
+ *
+ * @param {integer} qm_id - ID of a querymaster
+ * @param {string} outerPanelNumber - panelNumber of a panel, in which the query is embedded
+ * @param {integer} outerExclude - 1 if the outer panel has "exclude" selected
+ *
+ * @return {Object} array with 1: generated SQL and 2: XML-message of the QM
+ */
 i2b2.ExportSQL.processQM = function(qm_id, outerPanelNumber, outerExclude) {
-    var msg_vals = { qm_key_value: qm_id };
-    var results  = i2b2.CRC.ajax.getRequestXml_fromQueryMasterId('Plugin:ExportSQL', msg_vals);
-    var queryMasterName = i2b2.h.getXNodeVal(results.refXML,'name');
-    
-    var tablespace = '[TABLESPACE]';
+    var msg_vals   = { qm_key_value: qm_id };
+    var results    = i2b2.CRC.ajax.getRequestXml_fromQueryMasterId('Plugin:ExportSQL', msg_vals);
+    var tablespace = i2b2.ExportSQL.model.tablespace;
 
     // did we get a valid query definition back? 
     var queryDef = i2b2.h.XPath(results.refXML, 'descendant::query_name/..');
     if (queryDef.length == 0) {
-	$$("DIV#ExportSQL-mainDiv DIV#ExportSQL-TABS DIV.results-invalidQuery")[0].show();
-	return;
+	throw 'processQM(): invalide query definition';
     }
 
     var statement   = i2b2.ExportSQL.getStatementObj();
@@ -191,15 +208,15 @@ i2b2.ExportSQL.processQM = function(qm_id, outerPanelNumber, outerExclude) {
 
     // extract the data for each panel
     for (var pnr = 0; pnr < panels.length; pnr++) {
-	var panelNumber     = 'g' + i2b2.h.getXNodeVal(panels[pnr], 'panel_number');
-	var panelExclude    = i2b2.h.getXNodeVal(panels[pnr], 'invert');
-	var panelTiming     = i2b2.h.getXNodeVal(panels[pnr], 'panel_timing') || 'ANY';
-	var panelOccurences = i2b2.h.getXNodeVal(panels[pnr], 'total_item_occurrences');
-	var panelAccuracy   = i2b2.h.getXNodeVal(panels[pnr], 'panel_accuracy_scale');					
-	var panelDateFrom   = i2b2.ExportSQL.extractDate(i2b2.h.getXNodeVal(panels[pnr], 'panel_date_from'));
-	var panelDateTo     = i2b2.ExportSQL.extractDate(i2b2.h.getXNodeVal(panels[pnr], 'panel_date_to'));
-	var panelItems      = i2b2.h.XPath(panels[pnr], 'descendant::item[item_key]');
-	var subQueryCounter = 1;
+	var panelNumber        = 'g' + i2b2.h.getXNodeVal(panels[pnr], 'panel_number');
+	var panelExclude       = i2b2.h.getXNodeVal(panels[pnr], 'invert');
+	var panelTiming        = i2b2.h.getXNodeVal(panels[pnr], 'panel_timing') || 'ANY';
+	var panelOccurences    = i2b2.h.getXNodeVal(panels[pnr], 'total_item_occurrences');
+	var panelAccuracy      = i2b2.h.getXNodeVal(panels[pnr], 'panel_accuracy_scale');					
+	var panelDateFrom      = i2b2.ExportSQL.extractDate(i2b2.h.getXNodeVal(panels[pnr], 'panel_date_from'));
+	var panelDateTo        = i2b2.ExportSQL.extractDate(i2b2.h.getXNodeVal(panels[pnr], 'panel_date_to'));
+	var panelItems         = i2b2.h.XPath(panels[pnr], 'descendant::item[item_key]');
+	var subQueryCounter    = 1;
 	var subQueryTempTables = [];
 
 	if (outerPanelNumber)
@@ -272,209 +289,8 @@ i2b2.ExportSQL.processQM = function(qm_id, outerPanelNumber, outerExclude) {
     resultSql += '<br>);<br><br>';
     sql = statement.toString2() + sql + resultSql;
 
-    return new Array(sql, results.msgResponse); // for test purpose
+    return new Array(sql, results.msgResponse);
 }
-    // 	// Determine what item this is
-    // 	if (ckey.startsWith("query_master_id")) {
-    // 	    var o = new Object;
-    // 	    o.name =i2b2.h.getXNodeVal(pi[i2],'item_name');
-    // 	    o.id = ckey.substring(16);
-    // 	    o.result_instance_id = o.PRS_id ;
-
-    // 	    var sdxDataNode = i2b2.sdx.Master.EncapsulateData('QM',o);
-    // 	    po.items.push(sdxDataNode);								
-    // 	} else 	if (ckey.startsWith("masterid")) {
-    // 	    var o = new Object;
-    // 	    o.name =i2b2.h.getXNodeVal(pi[i2],'item_name');
-    // 	    o.id = ckey;
-    // 	    o.result_instance_id = o.PRS_id ;
-
-    // 	    var sdxDataNode = i2b2.sdx.Master.EncapsulateData('QM',o);
-    // 	    po.items.push(sdxDataNode);								
-    // 	} else if (ckey.startsWith("patient_set_coll_id")) {
-    // 	    var o = new Object;
-    // 	    o.titleCRC =i2b2.h.getXNodeVal(pi[i2],'item_name');
-    // 	    o.PRS_id = ckey.substring(20);
-    // 	    o.result_instance_id = o.PRS_id ;
-
-    // 	    var sdxDataNode = i2b2.sdx.Master.EncapsulateData('PRS',o);
-    // 	    po.items.push(sdxDataNode);		
-    // 	} else if (ckey.startsWith("patient_set_enc_id")) {
-    // 	    var o = new Object;
-    // 	    o.titleCRC =i2b2.h.getXNodeVal(pi[i2],'item_name');
-    // 	    o.PRS_id = ckey.substring(19);
-    // 	    o.result_instance_id = o.PRS_id ;
-
-    // 	    var sdxDataNode = i2b2.sdx.Master.EncapsulateData('ENS',o);
-    // 	    po.items.push(sdxDataNode);		
-    
-    // 	} else {
-    // 	    //Get the modfier if it exists
-    // 	    //		if (i2b2.h.getXNodeVal(pi[i2],'constrain_by_modifier') != null)
-    // 	    //		{
-    // 	    //			po.modifier_key = i2b2.h.getXNodeVal(pi[i2],'constrain_by_modifier/modifier_key');
-    // 	    //			po.applied_path = i2b2.h.getXNodeVal(pi[i2],'constrain_by_modifier/applied_path');
-    // 	    //		}
-    
-    
-    // 	    // WE MUST QUERY THE ONT CELL TO BE ABLE TO DISPLAY THE TREE STRUCTURE CORRECTLY
-
-    // 	    var o = new Object;
-    // 	    o.level = i2b2.h.getXNodeVal(pi[i2],'hlevel');
-    // 	    o.name = i2b2.h.getXNodeVal(pi[i2],'item_name');
-    // 	    o.key = i2b2.h.getXNodeVal(pi[i2],'item_key');
-    // 	    o.synonym_cd = i2b2.h.getXNodeVal(pi[i2],'item_is_synonym');
-    // 	    o.tooltip = i2b2.h.getXNodeVal(pi[i2],'tooltip');
-    // 	    o.hasChildren = i2b2.h.getXNodeVal(pi[i2],'item_icon');
-    
-    // 	    //o.xmlOrig = c;
-    
-    // 	    // Lab Values processing
-    // 	    var lvd = i2b2.h.XPath(pi[i2], 'descendant::constrain_by_value');
-    // 	    if ((lvd.length>0) && (i2b2.h.XPath(pi[i2], 'descendant::constrain_by_modifier').length == 0)){
-    // 		lvd = lvd[0];
-    // 		// pull the LabValue definition for concept
-    // 		// extract & translate
-    // 		var t = i2b2.h.getXNodeVal(lvd,"value_constraint");
-    // 		o.LabValues = {};
-    // 		o.LabValues.NumericOp = i2b2.h.getXNodeVal(lvd,"value_operator");
-    // 		o.LabValues.GeneralValueType = i2b2.h.getXNodeVal(lvd,"value_type");								
-    // 		switch(o.LabValues.GeneralValueType) {
-    // 		case "NUMBER":
-    // 		    o.LabValues.MatchBy = "VALUE";
-    // 		    if (t.indexOf(' and ')!=-1) {
-    // 			// extract high and low values
-    // 			t = t.split(' and ');
-    // 			o.LabValues.ValueLow = t[0];
-    // 			o.LabValues.ValueHigh = t[1];
-    // 		    } else {
-    // 			o.LabValues.Value = t;
-    // 		    }
-    // 		    break;
-    // 		case "STRING":
-    // 		    o.LabValues.MatchBy = "VALUE";
-    // 		    o.LabValues.ValueString = t;
-    // 		    break;
-    // 		case "LARGETEXT":
-    // 		    o.LabValues.MatchBy = "VALUE";
-    // 		    o.LabValues.GeneralValueType = "LARGESTRING";
-    // 		    o.LabValues.DbOp = (i2b2.h.getXNodeVal(lvd,"value_operator") == "CONTAINS[database]" ? true : false );													
-    // 		    o.LabValues.ValueString = t;
-    // 		    break;
-    // 		case "TEXT":	// this means Enum?
-    // 		    o.LabValues.MatchBy = "VALUE";
-    // 		    try {
-    // 			o.LabValues.ValueEnum = eval("(Array"+t+")");
-    // 			o.LabValues.GeneralValueType = "ENUM";																									
-    // 		    } catch(e) {
-    // 			//is a string
-    // 			o.LabValues.StringOp = i2b2.h.getXNodeVal(lvd,"value_operator");
-    // 			o.LabValues.ValueString = t;
-    // 			o.LabValues.GeneralValueType = "STRING";	
-    // 			//i2b2.h.LoadingMask.hide();
-    // 			//("Conversion Failed: Lab Value data = "+t);
-    // 		    }
-    // 		    break;
-    // 		case "FLAG":
-    // 		    o.LabValues.MatchBy = "FLAG";
-    // 		    o.LabValues.ValueFlag = t
-    // 		    break;		
-    // 		default:
-    // 		    o.LabValues.Value = t;
-    // 		}		
-    // 	    }
-    // 	    // sdx encapsulate
-    // 	    var sdxDataNode = i2b2.sdx.Master.EncapsulateData('CONCPT',o);
-    // 	    if (o.LabValues) {
-    // 		// We do want 2 copies of the Lab Values: one is original from server while the other one is for user manipulation
-    // 		sdxDataNode.LabValues = o.LabValues;
-    // 	    }
-    // 	    //o.xmlOrig = c;
-    // 	    if (i2b2.h.XPath(pi[i2], 'descendant::constrain_by_modifier').length > 0) {
-    // 		//if (i2b2.h.getXNodeVal(pi[i2],'constrain_by_modifier') != null) {
-    // 		sdxDataNode.origData.parent = {};
-    // 		sdxDataNode.origData.parent.key = o.key;
-    // 		//sdxDataNode.origData.parent.LabValues = o.LabValues;
-    // 		sdxDataNode.origData.parent.hasChildren = o.hasChildren;
-    // 		sdxDataNode.origData.parent.level = o.level;
-    // 		sdxDataNode.origData.parent.name = o.name;
-    // 		sdxDataNode.origData.key = i2b2.h.getXNodeVal(pi[i2],'constrain_by_modifier/modifier_key');
-    // 		sdxDataNode.origData.applied_path = i2b2.h.getXNodeVal(pi[i2],'constrain_by_modifier/applied_path');
-    // 		sdxDataNode.origData.name = i2b2.h.getXNodeVal(pi[i2],'constrain_by_modifier/modifier_name');
-    // 		sdxDataNode.origData.isModifier = true;
-    // 		this.hasModifier = true;
-    
-    // 		// Lab Values processing
-    // 		var lvd = i2b2.h.XPath(pi[i2], 'descendant::constrain_by_modifier/constrain_by_value');
-    // 		if (lvd.length>0){
-    // 		    lvd = lvd[0];
-    // 		    // pull the LabValue definition for concept
-
-    // 		    // extract & translate
-    // 		    var t = i2b2.h.getXNodeVal(lvd,"value_constraint");
-    // 		    o.ModValues = {};
-    // 		    o.ModValues.NumericOp = i2b2.h.getXNodeVal(lvd,"value_operator");
-    // 		    o.ModValues.GeneralValueType = i2b2.h.getXNodeVal(lvd,"value_type");								
-    // 		    switch(o.ModValues.GeneralValueType) {
-    // 		    case "NUMBER":
-    // 			o.ModValues.MatchBy = "VALUE";
-    // 			if (t.indexOf(' and ')!=-1) {
-    // 			    // extract high and low values
-    // 			    t = t.split(' and ');
-    // 			    o.ModValues.ValueLow = t[0];
-    // 			    o.ModValues.ValueHigh = t[1];
-    // 			} else {
-    // 			    o.ModValues.Value = t;
-    // 			}
-    // 			break;
-    // 		    case "STRING":
-    // 			o.ModValues.MatchBy = "VALUE";
-    // 			o.ModValues.ValueString = t;
-    // 			break;
-    // 		    case "LARGETEXT":
-    // 			o.ModValues.MatchBy = "VALUE";
-    // 			o.ModValues.GeneralValueType = "LARGESTRING";
-    // 			o.ModValues.DbOp = (i2b2.h.getXNodeVal(lvd,"value_operator") == "CONTAINS[database]" ? true : false );													
-    // 			o.ModValues.ValueString = t;
-    // 			break;
-    // 		    case "TEXT":	// this means Enum?
-    // 			o.ModValues.MatchBy = "VALUE";
-    // 			try {
-    // 			    o.ModValues.ValueEnum = eval("(Array"+t+")");
-    // 			    o.ModValues.GeneralValueType = "ENUM";													
-    // 			} catch(e) {
-    // 			    o.ModValues.StringOp = i2b2.h.getXNodeVal(lvd,"value_operator");
-    // 			    o.ModValues.ValueString = t;
-    
-    // 			    //	i2b2.h.LoadingMask.hide();
-    // 			    //	console.error("Conversion Failed: Lab Value data = "+t);
-    // 			}
-    // 			break;
-    // 		    case "FLAG":
-    // 			o.ModValues.MatchBy = "FLAG";
-    // 			o.ModValues.ValueFlag = t
-    // 			break;		
-    // 		    default:
-    // 			o.ModValues.Value = t;
-    // 		    }		
-    // 		}
-    // 		// sdx encapsulate
-    // 		//var sdxDataNode = i2b2.sdx.Master.EncapsulateData('CONCPT',o);
-    // 		if (o.ModValues) {
-    // 		    // We do want 2 copies of the Lab Values: one is original from server while the other one is for user manipulation
-    // 		    sdxDataNode.ModValues = o.ModValues;
-    // 		}
-    // 		//}	
-    // 	    }
-    // 	    po.items.push(sdxDataNode);
-    // 	    //	} else {
-    // 	    //		console.error("CRC's ONT Handler could not get term details about '"+ckey+"'!");
-    // 	    //	}
-    // 	}
-    //     }
-    //     dObj.panels[po.panel_num] = po;
-    // }
-
 
 /**
  * transforms a string to an array containing year, month and day
@@ -549,16 +365,13 @@ i2b2.ExportSQL.processItems = function(tempTables) {
     var sql          = '';
     var inConstraint = i2b2.ExportSQL.generateInConstraintForTables(tempTables);
     var items        = i2b2.ExportSQL.model.concepts.map(function(x) { return x.dimdiColumn; });
-    var tablespace   = '[TABLESPACE]';
+    var tablespace   = i2b2.ExportSQL.model.tablespace;
     var statement    = i2b2.ExportSQL.getStatementObj();
-    var fromYear     = document.getElementById('fromYear');
-    var toYear       = document.getElementById('toYear');
-
-    fromYear = fromYear.options[fromYear.selectedIndex].text;
-    toYear   = toYear.options[toYear.selectedIndex].text;
+    var fromYear     = i2b2.ExportSQL.model.fromYear;
+    var toYear       = i2b2.ExportSQL.model.toYear;
     
-    var fromDate = fromYear == '---' ? null : i2b2.ExportSQL.extractDate(fromYear);
-    var toDate   = toYear == '---' ? null : i2b2.ExportSQL.extractDate(toYear);
+    var fromDate = isNaN(fromYear) ? null : i2b2.ExportSQL.extractDate(fromYear);
+    var toDate   = isNaN(toYear) ? null : i2b2.ExportSQL.extractDate(toYear);
 
     statement.addItemGroup(1, 0, 'ANY', 1, 1, fromDate, toDate);
     for (var i = 0; i < items.length; i++) {
@@ -580,7 +393,7 @@ i2b2.ExportSQL.processItems = function(tempTables) {
  */
 i2b2.ExportSQL.generateInConstraintForTables = function(tables) {
     return tables.map(
-	function(x) { return 'SELECT psid FROM [TABLESPACE].' + x; }
+	function(x) { return 'SELECT psid FROM ' + i2b2.ExportSQL.model.tablespace + '.' + x; }
     ).join('<br>INTERSECT<br>');
 }
 
@@ -600,8 +413,8 @@ i2b2.ExportSQL.getStatementObj = function() {
 		where.push(this.itemGroups[i].toString());
 	    }
 
-	    if (from.length == 0) throw 'toString(): from clause is empty';
-	    if (where.length == 0) throw 'toString(): where clause is empty';
+	    if (from.length == 0) throw 'statement.toString(): from clause is empty';
+	    if (where.length == 0) throw 'statement.toString(): where clause is empty';
 	    
 	    return 'SELECT *<br>'
  		+ 'FROM ' + i2b2.ExportSQL.tableArrayToString(from) + '<br>'
@@ -620,7 +433,7 @@ i2b2.ExportSQL.getStatementObj = function() {
 	},
 	
 	getTablesStringLatestGroup: function() {
-	    if (!this.getLatestItemGroup()) throw 'getTablesStringLatestGroup(): no itemGroups in statement';
+	    if (!this.getLatestItemGroup()) throw 'statement.getTablesStringLatestGroup(): no itemGroups in statement';
 	    return i2b2.ExportSQL.tableArrayToString(
 		this.getLatestItemGroup().getTables()
 	    );
@@ -634,8 +447,8 @@ i2b2.ExportSQL.getStatementObj = function() {
 	 * @param {string} value - value the item is matched to
 	 */
  	addItem: function(item_key, icon, operator, value) {
-	    if (!item_key) throw 'addItem(): parameter item_key is null';
-	    if (!icon) throw 'addItem(): parameter icon is null';
+	    if (!item_key) throw 'statement.addItem(): parameter item_key is null';
+	    if (!icon) throw 'statement.addItem(): parameter icon is null';
 	    this.getLatestItemGroup().addItem(item_key, icon, operator, value);
  	},
 
@@ -656,7 +469,7 @@ i2b2.ExportSQL.getStatementObj = function() {
 	 * @param {string} table - table expression 
 	 */
  	addTable: function(table) {
-	    if (!table) throw 'addTable(): parameter table is null';
+	    if (!table) throw 'statement.addTable(): parameter table is null';
  	    if (this.tables.indexOf(table) < 0)
  		this.tables.push(table);
  	},
@@ -673,9 +486,9 @@ i2b2.ExportSQL.getStatementObj = function() {
 	 * @param {Object} dateTo - end date for obserfation
 	 */
  	addItemGroup: function(number, exclude, timing, occurences, accuracy, dateFrom, dateTo) {
-	    if (!number) throw 'addItemGroup(): parameter number is null';
- 	    if (!occurences) throw 'addItemGroup(): parameter occurences is null';
-	    if (!dateFrom) throw 'addItemGroup(): parameter dateFrom is null';
+	    if (!number) throw 'statement.addItemGroup(): parameter number is null';
+ 	    if (!occurences) throw 'statement.addItemGroup(): parameter occurences is null';
+	    if (!dateFrom) throw 'statement.addItemGroup(): parameter dateFrom is null - group of a query or subquery does not contain a from-date';
 
 	    var itemGroup = {
 		number    : number,
@@ -710,17 +523,19 @@ i2b2.ExportSQL.getStatementObj = function() {
 		 * @return {string} create statement
 		 */
 		toString2: function() {
-		    if (this.items.length == 0)
-			return 'CREATE TEMPORARY TABLE [TABLESPACE].' + this.getTempTableName() + '(psid integer);';
+		    var tablespace = i2b2.ExportSQL.model.tablespace;
 
-		    if (this.tables.length == 0) throw 'toString2(): no tables for the group available';
-		    return 'CREATE TEMPORARY TABLE [TABLESPACE].' + this.getTempTableName() + ' AS (<br>'
+		    if (this.items.length == 0)
+			return 'CREATE TEMPORARY TABLE ' + tablespace + '.' + this.getTempTableName() + '(psid integer);';
+
+		    if (this.tables.length == 0) throw 'itemGroup.toString2(): no tables for the group available';
+		    return 'CREATE TEMPORARY TABLE ' + tablespace + '.' + this.getTempTableName() + ' AS (<br>'
 			+ 'SELECT CASE '
 			+ this.tables.map(
 			    function(x) {
 				var satzartNr = x.replace(/(.*?)(SA)(\d\d\d)(.*)/, '$3');
 				var satzart   = 'SA' + satzartNr;
-				if (isNaN(satzartNr)) throw 'toString2(): tablename does not contain a satzartNr';
+				if (isNaN(satzartNr)) throw 'itemGroup.toString2(): tablename does not contain a satzartNr';
 				return satzart + '_PSID2 IS NOT NULL THEN ' + satzart + '_PSID2';
 			    }
 			).join(' ELSE ') + ' ELSE NULL END AS psid<br>'
@@ -744,7 +559,7 @@ i2b2.ExportSQL.getStatementObj = function() {
 		 * @return {string} tablename
 		 */
 		getTempTableName: function() {
-		    if (!this.number) throw 'getTempTableName(): number is null';
+		    if (!this.number) throw 'itemGroup.getTempTableName(): number is null';
 		    return 'temp_group_' + this.number;
 		},
 
@@ -757,16 +572,16 @@ i2b2.ExportSQL.getStatementObj = function() {
 		 * @return {Object} array with table and alias 
 		 */
 		getTableWithAliasForColumn: function(dimdiColumn) {
-		    if (!dimdiColumn) throw 'getTableWithAliasForColumn(): parameter dimdiColumn is null';
+		    if (!dimdiColumn) throw 'itemGroup.getTableWithAliasForColumn(): parameter dimdiColumn is null';
 		    var table = '';
 		    var alias = '';
 
 		    if (!this.dateFrom) {
-			throw 'getTableWithAliasForColumn(): dateFrom is null';
+			throw 'itemGroup.getTableWithAliasForColumn(): dateFrom is null';
 		    } else if(this.dateFrom && this.dateTo 
 			      && this.dateFrom.Year > this.dateTo.Year
 			     ) {
-			throw 'getTableWithAliasForColumn(): from-year is greater then to-year';
+			throw 'itemGroup.getTableWithAliasForColumn(): from-year is greater then to-year';
 		    } else if (this.dateFrom 
 			       && (!this.dateTo || this.dateFrom == this.dateTo)
 			      ) { // missing or equal to-date
@@ -787,12 +602,12 @@ i2b2.ExportSQL.getStatementObj = function() {
 		},
 
 		getTableForColumn: function(dimdiColumn) {
-		    if (!dimdiColumn) throw 'getTableForColumn(): parameter dimdiColumn is null';
+		    if (!dimdiColumn) throw 'itemGroup.getTableForColumn(): parameter dimdiColumn is null';
 		    return this.getTableWithAliasForColumn(dimdiColumn)[0];
 		},
 
 		getAliasForColumn: function(dimdiColumn) {
-		    if (!dimdiColumn) throw 'getAliasForColumn(): parameter dimdiColumn is null';
+		    if (!dimdiColumn) throw 'itemGroup.getAliasForColumn(): parameter dimdiColumn is null';
 		    return this.getTableWithAliasForColumn(dimdiColumn)[1];
 		},
 
@@ -803,7 +618,7 @@ i2b2.ExportSQL.getStatementObj = function() {
 		 * @param {string} dimdiColumn - valid dimdi database column name
 		 */
 		addTableForColumn: function(dimdiColumn) {
-		    if (!dimdiColumn) throw 'addTableForColumn(): parameter dmdiColumn is null';
+		    if (!dimdiColumn) throw 'itemGroup.addTableForColumn(): parameter dmdiColumn is null';
 		    var table = this.getTableWithAliasForColumn(dimdiColumn).join(' ');
 
 		    if (this.tables.indexOf(table) < 0)
@@ -819,10 +634,10 @@ i2b2.ExportSQL.getStatementObj = function() {
 		 * @return {string} table name with tablespace
 		 */
  		extractTableWithTablespace: function(dimdiColumn, year) {
-		    if (!dimdiColumn) throw 'extractTableWithTablespace(): parameter dimdiColumn is null';
-		    if (!year) throw 'extractTableWithTablespace(): parameter year is null';
+		    if (!dimdiColumn) throw 'itemGroup.extractTableWithTablespace(): parameter dimdiColumn is null';
+		    if (!year) throw 'itemGroup.extractTableWithTablespace(): parameter year is null';
 		    
- 		    return '[TABLESPACE].' + this.extractTable(dimdiColumn, year);
+ 		    return i2b2.ExportSQL.model.tablespace + '.' + this.extractTable(dimdiColumn, year);
  		},
 
 		/**
@@ -834,12 +649,12 @@ i2b2.ExportSQL.getStatementObj = function() {
 		 * @return {string} table name
 		 */
 		extractTable: function(dimdiColumn, year) {
-		    if (!dimdiColumn) throw 'extractTable(): parameter dimdiColumn is null';
-		    if (!year) throw 'extractTable(): parameter year is null';
+		    if (!dimdiColumn) throw 'itemGroup.extractTable(): parameter dimdiColumn is null';
+		    if (!year) throw 'itemGroup.extractTable(): parameter year is null';
 
 		    var satzartNr = dimdiColumn.replace(/(SA)(\d\d\d)(.*)/, '$2');
 
-		    if (isNaN(satzartNr)) throw 'extractTable(): dimdiColumn does not contain a satzartNr';
+		    if (isNaN(satzartNr)) throw 'itemGroup.extractTable(): dimdiColumn does not contain a satzartNr';
 
 		    return 'V' + year + 'SA' + satzartNr;
 		},
@@ -852,8 +667,8 @@ i2b2.ExportSQL.getStatementObj = function() {
 		 * @param {string} value - the value the item is matched to
 		 */
  	    	addItem: function(item_key, icon, operator, value) {
-		    if (!item_key) throw 'addItem(): parameter item_key is null';
-		    if (!icon) throw 'addItem(): parameter icon is null';
+		    if (!item_key) throw 'itemGroup.addItem(): parameter item_key is null';
+		    if (!icon) throw 'itemGroup.addItem(): parameter icon is null';
 
 		    var dimdiColumn = item_key.replace(/(.*\\)(SA.*?)(\\.*)/, '$2');
  	    	    var table       = this.getTableForColumn(dimdiColumn);
@@ -875,11 +690,11 @@ i2b2.ExportSQL.getStatementObj = function() {
 			 * @return {string} SQL string build from dimdiColumn, operator and value
 			 */
  	    		toString: function() {
-			    if (!this.dimdiColumn) throw 'toString(): dimdiColumn is null';
-			    if (!this.item_key) throw 'toString(): item_key is null';
-			    if (!this.icon) throw 'toString(): icon is null';
-			    if (!this.occurences) throw 'toString(): occurences is null';
-			    if (!this.alias) throw 'toString(): alias is null';
+			    if (!this.dimdiColumn) throw 'item.toString(): dimdiColumn is null';
+			    if (!this.item_key) throw 'item.toString(): item_key is null';
+			    if (!this.icon) throw 'item.toString(): icon is null';
+			    if (!this.occurences) throw 'item.toString(): occurences is null';
+			    if (!this.alias) throw 'item.toString(): alias is null';
 
 			    var sql        = '';
 			    var constraint = '';
@@ -889,7 +704,7 @@ i2b2.ExportSQL.getStatementObj = function() {
 			    var catalogue  = this.item_key.replace(regExp, '$2');
 			    var satzart    = 'SA' + satzartNr;
 
-			    if (isNaN(satzartNr)) throw 'toString(): dimdiColumn does not contain a satzartNr';
+			    if (isNaN(satzartNr)) throw 'item.toString(): dimdiColumn does not contain a satzartNr';
 			    
 			    if (this.operator) {
  	    			constraint = this.dimdiColumn + ' ' 
@@ -959,7 +774,7 @@ i2b2.ExportSQL.getStatementObj = function() {
 			    case 'integer':
 				return this.value.replace(/'/g, '');
 			    default:
-				throw 'getModifiedValue(): no valid datatype for ' + this.dimdiColumn + ' found';
+				throw 'item.getModifiedValue(): no valid datatype for ' + this.dimdiColumn + ' found';
 			    }
 			},
 
@@ -969,10 +784,10 @@ i2b2.ExportSQL.getStatementObj = function() {
 			 * @param {string} 'string' or 'integer'
 			 */
 			getDatatype: function() {
-			    if (!this.dimdiColumn) throw 'getDatatype(): dimdiColumn is null';
+			    if (!this.dimdiColumn) throw 'item.getDatatype(): dimdiColumn is null';
 			    var satzartNr = this.dimdiColumn.replace(/(SA)(\d\d\d)(.*)/, '$2');
 
-			    if (isNaN(satzartNr)) throw 'getDatatype(): dimdiColumn does not contain a valid satzartNr';
+			    if (isNaN(satzartNr)) throw 'item.getDatatype(): dimdiColumn does not contain a valid satzartNr';
 			    if ((satzartNr == 551 || satzartNr == 651)
 				&& (new RegExp('DIAGNOSE|ICD|QUALIFIZIERUNG')).test(this.dimdiColumn)
 			       )
