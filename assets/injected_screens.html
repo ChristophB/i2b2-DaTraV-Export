@@ -5,10 +5,10 @@
       <div id="ExportSQL-TABS" class="yui-navset">
 	<ul class="yui-nav">
 	  <li id="ExportSQL-TAB0" class="selected"><a href="#ExportSQL-TAB0"><em>Generate SQL</em></a></li>
-	  <!--<li id="ExportSQL-TAB1"><a href="#ExportSQL-TAB1"><em>View Results</em></a></li>-->
-	  <li id="ExportSQL-TAB2"><a href="#ExportSQL-TAB2"><em>Plugin Help</em></a></li>
+	  <li id="ExportSQL-TAB1"><a href="#ExportSQL-TAB1"><em>Plugin Help</em></a></li>
 	</ul>
 	<div class="yui-content" id="ExportSQL-CONTENT">
+	  <!--tab1-->
 	  <div>
 	    <div class="ExportSQL-MainContent">
 	      <div class="ExportSQL-MainContentPad">
@@ -23,7 +23,7 @@
 		    <div class="generateBox"><a href="JavaScript:i2b2.ExportSQL.getResults()"><span id="generateBoxText">Generate SQL</span></a></div>
 		  </div>
 		  <div class="droptrgt items" style="overflow:auto; height:200px; width:50%; background:white;" id="ExportSQL-IDROP">Drop concepts here</div>
-		  <div class="messagePanel" id="messagePanel" />
+		  <div class="messagePanel" id="messagePanel"></div>
 		</div>
 		<br>
 		<div class="results-finished" style="display:none; float:left;">
@@ -37,26 +37,35 @@
 	      </div>
 	    </div>
 	  </div>
+	  <!--tab2-->
 	  <div>
 	    <div class="ExportSQL-MainContent">
 	      <div class="ExportSQL-MainContentPad">
 		<h1>ExportSQL</h1>
 		<hr size="1" noshade>
 		<h2>Introduction</h2>
-		<!--This plugin demonstrates how to use tabs and interact with i2b2 objects by accepting DragDrop messages (SDX Objects).
-		The three tab layout, which separates plugin input (specify data), plugin output (view results), and help content is a model that can be used by many plugins.
-		SDX stands for Standard Data Exchange, which is the i2b2 web client framework's mechanism for handling drag and drop objects. The SDX, AJAX, and other utility functions provided by the framework greatly simplify the process of creating new plugins.-->
+		---
 		<h2>Instructions</h2>
-		<!--Navigate to the "Specify Data" tab. Then, drag and drop an i2b2 object such as a search term or previous query onto the input box. Finally, click the "View Results" tab for information about that object.-->
+		Navigate to the "Generate SQL" tab. Drag and drop an i2b2 query, build up from DaTraV concepts, onto the input box. This query should specifies the patient set you are interested in.
+		The query is still valid, if it contains subqueries.<br>
+		Next, you have to specify a start (and end) Ausgleichsjahr, to restrict the resulting SQL statement on respective data sets. If a group of the dropped query or its subqueries does not
+		contain dates, the values for start and end Ausgleichsjahr will be used instead.<br>
+		Finally you can drag and drop some concepts into the left container. All selected concepts will be selected by the generated SQL statement.<br>
+		Click on "Generate" to get your resulting SQL statement.
+		<h2>Not supported:</h2>
+		<ul>
+		  <li>Event sequences</li>
+		  <li>...</li>
+		</ul>
 		<h2>About Us</h2>
-		<!--This plugin was created by Nick Benik and Griffin Weber, MD, PhD.-->
+		This plugin was created by Christoph Beger as part of a master thesis.
 		<h2>Terms of Use</h2>
-		<!--This example plugin is distributed with the i2b2 web client framework and may be used free of charge.-->
+		---
 	      </div>
 	    </div>
 	  </div>
 	</div>
       </div>
-    </div>  
+    </div>
   </body>
 </html>
