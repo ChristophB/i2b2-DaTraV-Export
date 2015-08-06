@@ -466,6 +466,11 @@ i2b2.ExportSQL.generateInConstraintForTables = function(tables) {
     ).join('<br>INTERSECT<br>');
 }
 
+i2b2.ExportSQL.addLeadingZeros = function(num, size) {
+    var string = '00' + num;
+    return string.substr(string.length - size);
+}
+
 /**
  * handles the processing and transformation to a SQL statement
  */
@@ -770,6 +775,75 @@ i2b2.ExportSQL.getStatementObj = function() {
 			occurences : this.occurences,
 			icon       : icon,
 
+			generateBSNRConstraint: function(catalogue, value) {
+			    if (value == catalogue) // toplevel
+				return this.dimdiColumn + ' IS NOT NULL';
+			    else if (this.icon.match(/F/)) { // folder
+				throw 'item.generateBSNRConstraint() for folder not yet implemented';
+			    } else { //leaf
+				return this.dimdiColumn
+				    + ' IN (' + value.split('_').filter(
+					function(x) { return x; }
+				    ).map(
+					function(x) { return parseInt(x) }
+				    ).join(', ') + ')';
+			    }
+			},
+
+			generatePZNConstraint: function(catalogue, value) {
+			    if (value == catalogue) // toplevel
+				return this.dimdiColumn + ' IS NOT NULL';
+			    else if (this.icon.match(/F/)) { // folder
+				throw 'item.generatePZNConstraint() for folder not yet implemented';
+			    } else //leaf
+				return this.dimdiColumn + ' = ' + parseInt(value);
+			},
+
+			generateAGSConstraint: function(catalogue, value) {
+			    if (value == catalogue) // toplevel
+				return this.dimdiColumn + ' IS NOT NULL';
+			    else if (this.icon.match(/F/)) { // folder
+				return this.dimdiColumn + '::Text'
+				    + " LIKE '" + parseInt(value) + "%'";
+			    } else //leaf
+				return this.dimdiColumn + ' = ' + parseInt(value);
+			},
+
+			generateICD10GMConstraint: function(catalogue, value) {
+			    if (value == catalogue) // toplevel
+				return this.dimdiColumn + ' IS NOT NULL';
+			    else if (this.icon.match(/F/)) { // folder
+				if (!value.match(/\d/)) // upper class without codes
+				    throw 'item.generateICD10GMConstraint() for upper classes without codes not implemented';
+				if (value.match(/-/)) { // range of codes
+				    var codes      = value.split('-');
+				    var initial    = value.substring(0, 1);
+				    var constraint = '';
+				    var start      = parseInt(codes[0].substring(1, 3));
+				    var end        = parseInt(codes[1].substring(1, 3));
+
+				    for (var i = start; i < end; i++) {
+					constraint += this.dimdiColumn + " LIKE '" + initial + i2b2.ExportSQL.addLeadingZeros(i, 2) + "%'";
+					if (i < end - 1) constraint += ' OR ';
+				    }
+				    return constraint;
+				} else { // single code group with decimal places
+				    return this.dimdiColumn + " LIKE '" + value + "%'";
+				}
+			    } else //leaf
+				return this.dimdiColumn + " LIKE '" + value + "'";
+			},
+
+			generateCatalogueConstraint: function(catalogue, value) {
+			    switch (catalogue) {
+			    case 'ICD-10-GM': return this.generateICD10GMConstraint(catalogue, value);
+			    case 'AGS'      : return this.generateAGSConstraint(catalogue, value);
+			    case 'BSNR'     : return this.generateBSNRConstraint(catalogue, value);
+			    case 'PZN'      : return this.generatePZNConstraint(catalogue, value);
+			    default         : throw 'item.toString(): ' + catalogue + ' in query or subquery is not yet supported';
+			    }
+			},
+
 			/**
 			 * transforms the item to SQL
 			 *
@@ -785,31 +859,29 @@ i2b2.ExportSQL.getStatementObj = function() {
 			    var sql        = '';
 			    var constraint = '';
 			    var satzartNr  = this.dimdiColumn.replace(/(SA)(\d\d\d)(.*)/, '$2');
-			    var value      = this.item_key.replace(/(.*?\\)([^\\]*?)(\\$)/, '$2');
 			    var regExp     = new RegExp('(.*?' + this.dimdiColumn + '\\\\)([^\\\\]*)(\\\\.*)');
 			    var catalogue  = this.item_key.replace(regExp, '$2');
 			    var satzart    = 'SA' + satzartNr;
+			    var value      = this.item_key.replace(/(.*?\\)([^\\]*?)(\\$)/, '$2');
 
 			    if (isNaN(satzartNr)) throw 'item.toString(): dimdiColumn does not contain a satzartNr';
 
-			    if (value != this.dimdiColumn) { // catalogue
-				if (value == catalogue) // top level
-				    constraint = this.dimdiColumn + ' IS NOT NULL';
-				else { // leaf or folder
-				    if (this.icon.match(/F/) && (catalogue == 'BSNR' || catalogue == 'PZN' || catalogue == 'ICD-10-GM'))
-					throw 'item.toString(): A query or subquery contains a folder of the catalogues BSNR, PZN or ICD-10-GM. This is not supported!';
-				    if (catalogue == 'BSNR') { // exception for BSNR because of separate values for east and west
-					constraint =
-					    this.dimdiColumn
-					    + ' IN (' + value.split('_').filter(function(x) { return x; }).join(', ') + ')';
-				    } else {
-					constraint =
-					    this.dimdiColumn + '::Text'
-					    + " LIKE '" + value 
-					    + (this.icon.match(/F/) ? '%' : '') + "'";
-				    }
-				}
-			    } else { // non-catalogue leaf
+			    if (value != this.dimdiColumn) // catalogue
+				constraint = this.generateCatalogueConstraint(catalogue, value);
+				//     if (this.icon.match(/F/) && (catalogue == 'BSNR' || catalogue == 'PZN'))
+				// 	throw 'item.toString(): A query or subquery contains a folder of the catalogues BSNR or PZN. This is not supported!';
+				//     if (catalogue == 'BSNR') { // exception for BSNR because of separate values for east and west
+				// 	constraint =
+				// 	    this.dimdiColumn
+				// 	    + ' IN (' + value.split('_').filter(function(x) { return x; }).join(', ') + ')';
+				//     } else {
+				// 	constraint =
+				// 	    this.dimdiColumn + '::Text'
+				// 	    + " LIKE '" + value 
+				// 	    + (this.icon.match(/F/) ? '%' : '') + "'";
+				//     }
+				// }
+			    else { // non-catalogue
  	    			constraint =
 				    this.dimdiColumn + ' ' 
 				    + this.getModifiedOperator() + ' '
