@@ -165,8 +165,8 @@ i2b2.ExportSQL.getResults = function() {
 	result[0] += '<br><br>' + i2b2.ExportSQL.processItems(tempTables);
 	Element.select(sdxDisplay, '.sql')[0].innerHTML 
 	    = '<pre>' + result[0] + '</pre>';
-	// Element.select(sdxDisplay, '.msgResponse')[0].innerHTML 
-	    // = '<pre>' + i2b2.h.Escape(result[1]) + '</pre>';
+	Element.select(sdxDisplay, '.msgResponse')[0].innerHTML 
+	    = '<pre>' + i2b2.h.Escape(result[1]) + '</pre>';
 	$$("DIV#ExportSQL-mainDiv DIV#ExportSQL-TABS DIV.results-finished")[0].show();
     } catch (e) {
 	alert(e);
@@ -203,13 +203,13 @@ i2b2.ExportSQL.uniqueElements = function(array) {
  * @param {string} outerPanelNumber - panelNumber of a panel, in which the query is embedded
  * @param {integer} outerExclude - 1 if the outer panel has "exclude" selected
  *
- * @return {Object} array with 1: generated SQL and 2: XML-message of the QM
+ * @return {Object[]} array with 1: generated SQL and 2: XML-message of the QM
  */
 i2b2.ExportSQL.processQM = function(qm_id, outerPanelNumber, outerExclude) {
     var msg_vals   = { qm_key_value: qm_id };
     var results    = i2b2.CRC.ajax.getRequestXml_fromQueryMasterId('Plugin:ExportSQL', msg_vals);
     var tablespace = i2b2.ExportSQL.model.tablespace;
-
+    
     var queryDef = i2b2.h.XPath(results.refXML, 'descendant::query_name/..');
     if (queryDef.length == 0) {
 	throw 'processQM(): invalide query definition';
@@ -791,20 +791,31 @@ i2b2.ExportSQL.getStatementObj = function() {
 			    var satzart    = 'SA' + satzartNr;
 
 			    if (isNaN(satzartNr)) throw 'item.toString(): dimdiColumn does not contain a satzartNr';
-			    
-			    if (this.operator) {
+
+			    if (value != this.dimdiColumn) { // catalogue
+				if (value == catalogue) // top level
+				    constraint = this.dimdiColumn + ' IS NOT NULL';
+				else { // leaf or folder
+				    if (this.icon.match(/F/) && (catalogue == 'BSNR' || catalogue == 'PZN' || catalogue == 'ICD-10-GM'))
+					throw 'item.toString(): A query or subquery contains a folder of the catalogues BSNR, PZN or ICD-10-GM. This is not supported!';
+				    if (catalogue == 'BSNR') { // exception for BSNR because of separate values for east and west
+					constraint =
+					    this.dimdiColumn
+					    + ' IN (' + value.split('_').filter(function(x) { return x; }).join(', ') + ')';
+				    } else {
+					constraint =
+					    this.dimdiColumn + '::Text'
+					    + " LIKE '" + value 
+					    + (this.icon.match(/F/) ? '%' : '') + "'";
+				    }
+				}
+			    } else { // non-catalogue leaf
  	    			constraint =
 				    this.dimdiColumn + ' ' 
 				    + this.getModifiedOperator() + ' '
 				    + this.getModifiedValue();
-			    } else if (value != catalogue) {
-				constraint =
-				    this.dimdiColumn
-				    + " LIKE '" + value 
-				    + (this.icon.indexOf('F') != -1 ? '%' : '') + "'";
-			    } else {
-				constraint = this.dimdiColumn + ' IS NOT NULL';
 			    }
+
 			    if (this.occurences > 1) {
 				sql = this.occurences + ' <= '
 				    + '(SELECT count(*)'
