@@ -813,9 +813,11 @@ i2b2.ExportSQL.getStatementObj = function() {
 			    if (value == catalogue) // toplevel
 				return this.dimdiColumn + ' IS NOT NULL';
 			    else if (this.icon.match(/F/)) { // folder
-				if (!value.match(/\d/)) // upper class without codes
-				    throw 'item.generateICD10GMConstraint() for upper classes without codes not implemented';
-				if (value.match(/-/)) { // range of codes
+				if (!value.match(/\d/)) { // upper class without codes
+				    return this.dimdiColumn + ' IN (SELECT CODE '
+					+ 'FROM ' + i2b2.ExportSQL.model.tablespace + '.ICDCODES ' 
+					+ "WHERE KAPNR = '" + value + "')";
+				} else if (value.match(/-/)) { // range of codes
 				    var codes      = value.split('-');
 				    var initial    = value.substring(0, 1);
 				    var start      = parseInt(codes[0].substring(1, 3));
