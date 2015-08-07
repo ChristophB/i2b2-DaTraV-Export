@@ -818,22 +818,27 @@ i2b2.ExportSQL.getStatementObj = function() {
 				if (value.match(/-/)) { // range of codes
 				    var codes      = value.split('-');
 				    var initial    = value.substring(0, 1);
-				    var constraint = '';
 				    var start      = parseInt(codes[0].substring(1, 3));
 				    var end        = parseInt(codes[1].substring(1, 3));
 
-				    for (var i = start; i < end; i++) {
-					constraint += this.dimdiColumn + " LIKE '" + initial + i2b2.ExportSQL.addLeadingZeros(i, 2) + "%'";
-					if (i < end - 1) constraint += ' OR ';
-				    }
-				    return constraint;
+				    return this.dimdiColumn + " LIKE '" + initial + "%' "
+					+ 'AND TO_NUMBER(SUBSTR(' + this.dimdiColumn + ', 2, 2)) BETWEEN ' + start + ' AND ' + end; 
 				} else { // single code group with decimal places
 				    return this.dimdiColumn + " LIKE '" + value + "%'";
 				}
 			    } else //leaf
-				return this.dimdiColumn + " LIKE '" + value + "'";
+				return this.dimdiColumn + " LIKE '" + value + "%'"; // % because of optional special characters
 			},
 
+			/**
+			 * ### declare new catalogue functions here ###
+			 * generates a constraint for a catalogue by executing the matching function
+			 *
+			 * @param {string} catalogue - name of the catalogue
+			 * @param {string} value - items value
+			 *
+			 * @return {string} constraint for catalogue
+			 */
 			generateCatalogueConstraint: function(catalogue, value) {
 			    switch (catalogue) {
 			    case 'ICD-10-GM': return this.generateICD10GMConstraint(catalogue, value);
