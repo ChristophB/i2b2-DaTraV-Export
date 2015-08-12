@@ -158,7 +158,7 @@ i2b2.ExportSQL.getResults = function() {
     var qm_id      = i2b2.ExportSQL.model.qm.sdxInfo.sdxKeyValue;
     var sdxDisplay = $$('DIV#ExportSQL-mainDiv DIV#ExportSQL-InfoSDX')[0];
     
-    try {
+    // try {
 	var result     = i2b2.ExportSQL.processQM(qm_id);
 	var tempTables = i2b2.ExportSQL.uniqueElements(result[0].match(/temp_group_g\d+ /g));
 
@@ -168,9 +168,9 @@ i2b2.ExportSQL.getResults = function() {
 	Element.select(sdxDisplay, '.msgResponse')[0].innerHTML 
 	    = '<pre>' + i2b2.h.Escape(result[1]) + '</pre>';
 	$$("DIV#ExportSQL-mainDiv DIV#ExportSQL-TABS DIV.results-finished")[0].show();
-    } catch (e) {
-	alert(e);
-    }
+    // } catch (e) {
+	// alert(e);
+    // }
 
     i2b2.ExportSQL.model.dirtyResultsData = false;
 }
@@ -779,14 +779,17 @@ i2b2.ExportSQL.getStatementObj = function() {
 			    if (value == catalogue) // toplevel
 				return this.dimdiColumn + ' IS NOT NULL';
 			    else if (this.icon.match(/F/)) { // folder
-				throw 'item.generateBSNRConstraint() for folder not yet implemented';
-			    } else { //leaf
-				return this.dimdiColumn
+				if (value.match(/^\d*_\d*$/)) { // folder containins leafs for east and west BSNR
+				    return this.dimdiColumn
 				    + ' IN (' + value.split('_').filter(
 					function(x) { return x; }
 				    ).map(
 					function(x) { return parseInt(x) }
 				    ).join(', ') + ')';
+				} else // no leafs in the folder
+				    throw 'item.generateBSNRConstraint() for folder not yet implemented';
+			    } else { //leaf
+				return this.dimdiColumn + ' = ' + parseInt(value);
 			    }
 			},
 
@@ -875,19 +878,6 @@ i2b2.ExportSQL.getStatementObj = function() {
 
 			    if (value != this.dimdiColumn) // catalogue
 				constraint = this.generateCatalogueConstraint(catalogue, value);
-				//     if (this.icon.match(/F/) && (catalogue == 'BSNR' || catalogue == 'PZN'))
-				// 	throw 'item.toString(): A query or subquery contains a folder of the catalogues BSNR or PZN. This is not supported!';
-				//     if (catalogue == 'BSNR') { // exception for BSNR because of separate values for east and west
-				// 	constraint =
-				// 	    this.dimdiColumn
-				// 	    + ' IN (' + value.split('_').filter(function(x) { return x; }).join(', ') + ')';
-				//     } else {
-				// 	constraint =
-				// 	    this.dimdiColumn + '::Text'
-				// 	    + " LIKE '" + value 
-				// 	    + (this.icon.match(/F/) ? '%' : '') + "'";
-				//     }
-				// }
 			    else { // non-catalogue
  	    			constraint =
 				    this.dimdiColumn + ' ' 
@@ -915,6 +905,7 @@ i2b2.ExportSQL.getStatementObj = function() {
 			 * @return {string} operator in SQL syntax
 			 */
 			getModifiedOperator: function() {
+			    if (!this.operator) return 'IS NOT NULL';
 			    var operator  = this.operator.replace(/\[.*\]/, '');
 			    var sqlMapper = {
 				'LT'  : '<'
@@ -936,6 +927,7 @@ i2b2.ExportSQL.getStatementObj = function() {
 			 * @return {string} modified value
 			 */ 
 			getModifiedValue: function() {
+			    if (!this.operator) return '';
 			    var operator_sufix = this.operator.replace(/(.*?\[)(.*?)(\])/, '$2');
 
 			    switch (this.getDatatype()) {
