@@ -1,48 +1,65 @@
 /*** CSS for main plugin wrapper ***/
-
 DIV#ExportSQL-mainDiv {
     padding: 0px;
     height: 100%;
 }
 
-
-
 /*** CSS for tab background ***/
 
 DIV#ExportSQL-TABS DIV.yui-content {
-	background: #FFF;
+    background: #FFF;
 }
 DIV#ExportSQL-TABS DIV.ExportSQL-MainContent {
-    background:#FFF;
-    border:solid #63758C;
-    border-width:1px 0;
-    overflow:auto;
-    height:100%;
+    background: #FFF;
+    border: solid #63758C;
+    border-width: 1px 0;
+    overflow: auto;
+    height: 100%;
 }
 DIV#ExportSQL-TABS DIV.ExportSQL-MainContentPad {
-    padding:10px 10px;
+    padding: 10px 10px;
 }
 
-
-
-/*** CSS for the Specify Data tab ***/
-
+/*** CSS for the Generate SQL tab ***/
+DIV#ExportSQL-mainDiv DIV.results-finished {
+    background: #BBCCEE none repeat scroll 0%;
+    padding: 5px 5px 5px 5px;
+    border: 1px solid #667788;
+    height: auto;
+    overflow: auto;
+    width: auto;
+    position: relative;
+}
+DIV#ExportSQL-mainDiv DIV.statementBox {
+    text-align: left;
+    border: 1px solid #63758C;
+    overflow: auto;
+    width: auto;
+    background: white;
+    white-space: nowrap;
+    height: 300px;
+    padding: 0px 5px 0px 5px;
+    position: relative;
+}
+DIV#ExportSQL-mainDiv DIV.yearSelects {
+    float: right;
+}
 DIV#ExportSQL-mainDiv DIV.droptrgtlbl {
-	padding: 6px 0px;
-	float: left;
-	font-weight:bold;
-	color:#666;
-	margin: 7px 10px 7px 10px;
+    padding: 6px 0px;
+    float: left;
+    font-weight:bold;
+    color:#666;
+    margin: 7px 10px 7px 10px;
 }
 DIV#ExportSQL-mainDiv DIV.droptrgt {
-	padding: 5px 10px;
-	background: #DEEBEF;
-	margin: 7px 0px 7px 0px;
-	text-align: left;
-	border: 1px solid #63758C;
-	width: 300px;
-	overflow: hidden; 
-	float: left;
+    padding: 5px 10px;
+    background: #DEEBEF;
+    margin: 7px 0px 7px 0px;
+    text-align: left;
+    border: 1px solid #63758C;
+    width: 300px;
+    overflow: hidden; 
+    float: left;
 }
 DIV#ExportSQL-mainDiv DIV.generateBox {
     background: #6677AA;
@@ -55,8 +72,8 @@ DIV#ExportSQL-mainDiv DIV.generateBox {
     text-align: center;
     color: #FFF;
     cursor: pointer;
-    float: left;
-    margin: 12px 5px 0px 20px;
+    float: right;
+    margin-left: 20px;
     width: 72px;
     overflow: hidden;
 }
@@ -70,14 +87,14 @@ DIV#ExportSQL-mainDiv DIV.bar {
     border: 1px solid #667788;
     overflow: hidden;
     width: auto;
-    height: auto; /*43px;*/
+    height: auto;
     position: relative;
     clear: both;
     margin: 5px 0px 5px 0px;
 }
 DIV#ExportSQL-mainDiv select.selectYear {
     background: #DEEBEF;
-    margin-top: 12px;
+    margin: 12px 20px 0px 0px;
     float: left;
     width: auto;
 }
@@ -106,68 +123,22 @@ DIV#ExportSQL-mainDiv span.dropedItem:hover {
     background: #DEEBEF;
 }
 
-/*** CSS for the View Results tab ***/
-
-DIV#ExportSQL-TABS DIV.results-directions {
-	padding: 10px;
-	text-align:left;
-}
-DIV#ExportSQL-TABS DIV.results-text {
-	margin:10px;
-}
-DIV#ExportSQL-mainDiv DIV#ExportSQL-InfoSDX TABLE {
-	margin:0 10px 10px 10px;
-	border-collapse:collapse;
-}
-DIV#ExportSQL-mainDiv DIV#ExportSQL-InfoSDX TABLE TH {
-	width:150px;
-	border:solid 1px #63758C;
-	background-color:#CEDBEF;
-	padding:5px;
-}
-DIV#ExportSQL-mainDiv DIV#ExportSQL-InfoSDX TABLE TD {
-	width:300px;
-	overflow:auto;
-	border:solid 1px #63758C;
-	background-color:#DEEBEF;
-	padding:5px;
-}
-DIV#ExportSQL-mainDiv DIV#ExportSQL-InfoSDX .sdxOriginalXML {
-	padding:0px;
-}
-DIV#ExportSQL-mainDiv DIV#ExportSQL-InfoSDX .originalXML {
-	height:150px;
-	overflow:hidden;
-	padding:0px;
-	margin:0px;
-}
-DIV#ExportSQL-mainDiv DIV#ExportSQL-InfoSDX TABLE TD DIV PRE {
-	margin:0px;
-	width:300px;
-	height:140px;
-	display:block;
-	overflow:scroll;
-	padding:5px;
-}
-
-
-
 /*** CSS for the Plugin Help tab ***/
 
 DIV#ExportSQL-TABS H1 {
-	margin:0 0 10px 0;
-	font-size:16px;
-	color:#42558C;
-	font-weight:bold;
+    margin:0 0 10px 0;
+    font-size:16px;
+    color:#42558C;
+    font-weight:bold;
 }
 DIV#ExportSQL-TABS H2 {
-	margin:10px 0 10px 0;
-	font-size:13px;
-	color:#42558C;
-	font-weight:bold;
+    margin:10px 0 10px 0;
+    font-size:13px;
+    color:#42558C;
+    font-weight:bold;
 }
 DIV#ExportSQL-TABS HR {
-	margin:0;
+    margin:0;
 }
 
 

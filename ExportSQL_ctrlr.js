@@ -14,7 +14,7 @@ i2b2.ExportSQL.Init = function(loadedDiv) {
     document.getElementById('fromYear').innerHTML = yearOptions;
     document.getElementById('toYear').innerHTML   = yearOptions;
 
-    i2b2.ExportSQL.model.tablespace = '"DATRAV"';
+    i2b2.ExportSQL.model.tablespace = 'DATRAV';
     i2b2.ExportSQL.model.concepts   = [];
 
     i2b2.sdx.Master.AttachType(qmDivName, 'QM', op_trgt);
@@ -33,6 +33,21 @@ i2b2.ExportSQL.Unload = function() {
     return true;
 };
 
+i2b2.ExportSQL.reset = function() {
+    i2b2.ExportSQL.model.concepts = [];
+    i2b2.ExportSQL.model.fromYear = undefined;
+    i2b2.ExportSQL.model.toYear   = undefined;
+    i2b2.ExportSQL.model.qm       = undefined;
+
+    document.getElementById('fromYear').selectedIndex = 0;
+    document.getElementById('toYear').selectedIndex   = 0;
+    $('ExportSQL-QMDROP').innerHTML = 'Drop a query object here';
+    document.getElementById('results').hide();
+
+    i2b2.ExportSQL.redrawConceptDiv();
+    i2b2.ExportSQL.checkModel();
+};
+
 i2b2.ExportSQL.setYear = function() {
     var fromYear = document.getElementById('fromYear');
     var toYear   = document.getElementById('toYear');
@@ -44,7 +59,7 @@ i2b2.ExportSQL.setYear = function() {
     i2b2.ExportSQL.model.toYear   = toYear;
 
     i2b2.ExportSQL.checkModel();
-}
+};
 
 i2b2.ExportSQL.redrawMessagePanel = function() {
     var message     = '';
@@ -68,7 +83,7 @@ i2b2.ExportSQL.redrawMessagePanel = function() {
     else message += '<b><li>' + conceptText + '</li></b>';
 
     document.getElementById('messagePanel').innerHTML = '<ol>' + message + '</ol>';
-}
+};
 
 i2b2.ExportSQL.doDrop = function(sdxData) {
     sdxData = sdxData[0];
@@ -77,7 +92,7 @@ i2b2.ExportSQL.doDrop = function(sdxData) {
     $('ExportSQL-QMDROP').innerHTML = i2b2.h.Escape(sdxData.sdxInfo.sdxDisplayName);
 
     i2b2.ExportSQL.checkModel();		
-}
+};
 
 i2b2.ExportSQL.checkModel = function() {
     var fromYear = i2b2.ExportSQL.model.fromYear;
@@ -92,7 +107,7 @@ i2b2.ExportSQL.checkModel = function() {
     } else i2b2.ExportSQL.model.dirtyResultsData = false;
     
     i2b2.ExportSQL.redrawMessagePanel();
-}
+};
 
 i2b2.ExportSQL.doDropConcept = function(sdxData) {
     var concept = {};
@@ -114,7 +129,7 @@ i2b2.ExportSQL.doDropConcept = function(sdxData) {
 
     i2b2.ExportSQL.redrawConceptDiv();    
     i2b2.ExportSQL.checkModel();
-}
+};
 
 /**
  * removes an item from the concept-div
@@ -132,7 +147,7 @@ i2b2.ExportSQL.removeItem = function(dimdiColumn) {
     i2b2.ExportSQL.redrawConceptDiv();
 
     i2b2.ExportSQL.checkModel();
-}
+};
 
 i2b2.ExportSQL.redrawConceptDiv = function() {    
     var icon      = 'sdx_ONT_CONCPT_leaf.gif'; // 'sdx_ONT_CONCPT_branch-exp.gif';
@@ -148,7 +163,39 @@ i2b2.ExportSQL.redrawConceptDiv = function() {
     if (!innerHTML)
 	innerHTML = 'Drop concepts here';
     $('ExportSQL-IDROP').innerHTML = innerHTML;
-}
+};
+
+i2b2.ExportSQL.copyToClipboard = function() {
+    var div = document.getElementById('ExportSQL-StatementBox');
+
+    if (typeof window.getSelection != 'undefined' && typeof document.createRange != 'undefined') {
+        var range = document.createRange();
+        range.selectNodeContents(div);
+        var selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+    } else if (typeof document.selection != 'undefined' && typeof document.body.createTextRange != 'undefined') {
+        var textRange = document.body.createTextRange();
+        textRange.moveToElementText(div);
+        textRange.select();
+    }
+
+    try {
+	if (!document.execCommand('Copy'))
+	    throw 'Unable to copy to clipboard';
+	i2b2.ExportSQL.clearSelection();
+    } catch (e) {
+	alert('Unable to copy to clipboard. Please copy the selection manualy by pressing CTRL + C or CMD + C');
+    }
+};
+
+i2b2.ExportSQL.clearSelection = function() {
+    if ( document.selection ) {
+        document.selection.empty();
+    } else if ( window.getSelection ) {
+        window.getSelection().removeAllRanges();
+    }
+};
 
 /* Refresh the display with info of the SDX record that was DragDropped */
 i2b2.ExportSQL.getResults = function() {
@@ -156,24 +203,29 @@ i2b2.ExportSQL.getResults = function() {
 	return;
     }
     var qm_id      = i2b2.ExportSQL.model.qm.sdxInfo.sdxKeyValue;
-    var sdxDisplay = $$('DIV#ExportSQL-mainDiv DIV#ExportSQL-InfoSDX')[0];
+    //var sdxDisplay = $$('DIV#ExportSQL-mainDiv DIV#ExportSQL-InfoSDX')[0];
     
-    // try {
+    try {
 	var result     = i2b2.ExportSQL.processQM(qm_id);
 	var tempTables = i2b2.ExportSQL.uniqueElements(result[0].match(/temp_group_g\d+ /g));
 
 	result[0] += '<br><br>' + i2b2.ExportSQL.processItems(tempTables);
-	Element.select(sdxDisplay, '.sql')[0].innerHTML 
-	    = '<pre>' + result[0] + '</pre>';
-	Element.select(sdxDisplay, '.msgResponse')[0].innerHTML 
-	    = '<pre>' + i2b2.h.Escape(result[1]) + '</pre>';
-	$$("DIV#ExportSQL-mainDiv DIV#ExportSQL-TABS DIV.results-finished")[0].show();
-    // } catch (e) {
-	// alert(e);
-    // }
+
+	document.getElementById('ExportSQL-StatementBox').innerHTML = 
+	    '<pre>' + result[0] + '</pre>';
+	    //result[0];
+	// Element.select(sdxDisplay, '.sql')[0].innerHTML 
+	//     = '<pre>' + result[0] + '</pre>';
+	// Element.select(sdxDisplay, '.msgResponse')[0].innerHTML 
+	//     = '<pre>' + i2b2.h.Escape(result[1]) + '</pre>';
+	//$$("DIV#ExportSQL-mainDiv DIV#ExportSQL-TABS DIV.results-finished")[0].show();
+	document.getElementById('results').show();
+    } catch (e) {
+	alert(e);
+    }
 
     i2b2.ExportSQL.model.dirtyResultsData = false;
-}
+};
 
 /**
  * returns an array which contains all elements from the given array except duplicates
@@ -193,7 +245,7 @@ i2b2.ExportSQL.uniqueElements = function(array) {
     }
 
     return array;
-}
+};
 
 /**
  * generates "create temporary table" statements for a given QM-ID
@@ -265,7 +317,7 @@ i2b2.ExportSQL.processQM = function(qm_id, outerPanelNumber, outerExclude) {
 	    if (!item_key.includes('SA') && !item_key.includes('masterid:'))
 		throw 'processQM(): the QM contains a non-supported query or subquery';
 
-	    if (constraint != null) {
+	    if (constraint) {
 		operator = i2b2.h.getXNodeVal(constraint[0], 'value_operator');
 		value    = i2b2.h.getXNodeVal(constraint[0], 'value_constraint');
 	    }
@@ -304,7 +356,7 @@ i2b2.ExportSQL.processQM = function(qm_id, outerPanelNumber, outerExclude) {
     sql = statement.toString2() + sql + resultSql;
 
     return new Array(sql, results.msgResponse);
-}
+};
 
 /**
  * transforms a string to an array containing year, month and day
@@ -330,7 +382,7 @@ i2b2.ExportSQL.extractDate = function(string) {
     } else {
 	return null;
     }
-}
+};
 
 /**
  * transformes an array of table expressions to a string
@@ -367,7 +419,7 @@ i2b2.ExportSQL.tableArrayToString = function(array, joinColumn) { // joinColumn 
     }
 	
     return sql;
-}
+};
 
 /**
  * generates a SQL CASE expression for a given set of Satzarten, expanded by a sufix
@@ -408,7 +460,7 @@ i2b2.ExportSQL.generateCaseString = function(satzarten, sufix, alias) {
     }
     if (sql == '') return '';
     return 'CASE' + sql + ' ELSE NULL END' + alias;
-}
+};
 
 /**
  * creates the final SELECT statement
@@ -450,7 +502,7 @@ i2b2.ExportSQL.processItems = function(tempTables) {
 	+ 'WHERE ' + i2b2.ExportSQL.generateCaseString(satzarten, new Array('PSID', 'PSID2')) 
 	+       ' IN(<br>' + Array(7).join('&nbsp;') + 'SELECT psid FROM ' + tablespace + '.temp_result WHERE psid IS NOT NULL)<br>'
 	+ 'ORDER BY 1, 2, 3;';
-}
+};
 
 /**
  * returns an intersection of all tables (included in the given array) as string
@@ -464,12 +516,12 @@ i2b2.ExportSQL.generateInConstraintForTables = function(tables) {
     return tables.map(
 	function(x) { return 'SELECT psid FROM ' + i2b2.ExportSQL.model.tablespace + '.' + x; }
     ).join('<br>INTERSECT<br>');
-}
+};
 
 i2b2.ExportSQL.addLeadingZeros = function(num, size) {
     var string = '00' + num;
     return string.substr(string.length - size);
-}
+};
 
 /**
  * handles the processing and transformation to a SQL statement
@@ -915,7 +967,7 @@ i2b2.ExportSQL.getStatementObj = function() {
 				, 'GE': '>='
 			    };
 
-			    if (operator != null && sqlMapper[operator])
+			    if (operator && sqlMapper[operator])
 				return sqlMapper[operator];
 			    return operator;
 			},
@@ -978,6 +1030,6 @@ i2b2.ExportSQL.getStatementObj = function() {
     }
     
     return statement;
-}
+};
 
 

@@ -15,23 +15,26 @@
 		<div class="elementGroup">
 		  <div class="bar">  
 		    <div class="droptrgtlbl">i2b2 Query:</div>
-		    <div class="droptrgt SDX-PRS" id="ExportSQL-QMDROP">Drop an object here</div>
-		    <div class="droptrgtlbl">From year:</div>
-		    <select class="selectYear" id="fromYear" onchange="i2b2.ExportSQL.setYear();"></select>
-		    <div class="droptrgtlbl">To year:</div>
-		    <select class="selectYear" id="toYear" onchange="i2b2.ExportSQL.setYear();"></select>
-		    <div class="generateBox"><a href="JavaScript:i2b2.ExportSQL.getResults()"><span id="generateBoxText">Generate SQL</span></a></div>
+		    <div class="droptrgt SDX-PRS" id="ExportSQL-QMDROP">Drop a query object here</div>
+		    <div class="yearSelects">
+		      <div class="droptrgtlbl">From year:</div>
+		      <select class="selectYear" id="fromYear" onchange="i2b2.ExportSQL.setYear();"></select>
+		      <div class="droptrgtlbl">To year:</div>
+		      <select class="selectYear" id="toYear" onchange="i2b2.ExportSQL.setYear();"></select>
+		    </div>
 		  </div>
 		  <div class="droptrgt items" style="overflow:auto; height:200px; width:50%; background:white;" id="ExportSQL-IDROP">Drop concepts here</div>
 		  <div class="messagePanel" id="messagePanel"></div>
+		  <br>
+		  <div class="generateBox"><a href="JavaScript:i2b2.ExportSQL.reset()"><span id="resetBoxText">Reset</span></a></div>
+		  <div class="generateBox"><a href="JavaScript:i2b2.ExportSQL.getResults()"><span id="generateBoxText">Generate SQL</span></a></div>
 		</div>
 		<br>
-		<div class="results-finished" style="display:none; float:left;">
-		  <div id="ExportSQL-InfoSDX">
-		    <table>
-		      <tr><th>SQL Statement</th><td class="sql"></td></tr>
-		      <tr><th>Msg Response</th><td class="msgResponse"></td></tr>
-		    </table>
+		<div class="results-finished" id="results" style="display:none;">
+		  <div id="ExportSQL-StatementBox" class="statementBox"></div>
+		  <br>
+		  <div class="generateBox" style="margin-top:-10px;width:auto;padding:0px 4px 0px 4px;">
+		    <a href="JavaScript:i2b2.ExportSQL.copyToClipboard()"><span id="clipboardBoxText">Copy to Clipboard</span></a>
 		  </div>
 		</div>
 	      </div>
