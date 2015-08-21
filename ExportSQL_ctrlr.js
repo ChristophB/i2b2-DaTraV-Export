@@ -212,7 +212,7 @@ i2b2.ExportSQL.getResults = function() {
     var qm_id      = i2b2.ExportSQL.model.qm.sdxInfo.sdxKeyValue;
     //var sdxDisplay = $$('DIV#ExportSQL-mainDiv DIV#ExportSQL-InfoSDX')[0];
     
-    // try {
+    try {
 	var result     = i2b2.ExportSQL.processQM(qm_id);
 	var tempTables = i2b2.ExportSQL.uniqueElements(result[0].match(/temp_group_g\d+ /g));
 
@@ -227,9 +227,9 @@ i2b2.ExportSQL.getResults = function() {
 	//     = '<pre>' + i2b2.h.Escape(result[1]) + '</pre>';
 	//$$("DIV#ExportSQL-mainDiv DIV#ExportSQL-TABS DIV.results-finished")[0].style.display = 'block';
 	document.getElementById('results').style.display = 'block';
-    // } catch (e) {
-	// alert(e);
-    // }
+    } catch (e) {
+	alert(e);
+    }
 
     i2b2.ExportSQL.model.dirtyResultsData = false;
 };
