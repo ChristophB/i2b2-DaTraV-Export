@@ -5,14 +5,21 @@ i2b2.ExportSQL.Init = function(loadedDiv) {
     var op_trgt        = { dropTarget: true };
     var cfgObj         = { activeIndex: 0 };
     var endYear        = new Date().getFullYear();
-    var yearOptions    = '<option>---</option>';
     i2b2.ExportSQL.model.minStartYear = 2009;
 
+    var counter        = 1;
+    var selectFromYear = document.getElementById('fromYear');
+    var selectToYear   = document.getElementById('toYear');
+
+    /* Rework for Firefox */
+    selectFromYear.options[0] = new Option('---');
+    selectToYear.options[0]   = new Option('---');
+
     for (var year = i2b2.ExportSQL.model.minStartYear; year <= endYear; year++) {
-	yearOptions += '<option>' + year + '</option>';
+	selectFromYear.options[counter] = new Option(year);
+	selectToYear.options[counter]   = new Option(year);
+	counter++;
     }
-    document.getElementById('fromYear').innerHTML = yearOptions;
-    document.getElementById('toYear').innerHTML   = yearOptions;
 
     i2b2.ExportSQL.model.tablespace = 'DATRAV';
     i2b2.ExportSQL.model.concepts   = [];
@@ -54,7 +61,7 @@ i2b2.ExportSQL.setYear = function() {
 
     fromYear = fromYear.options[fromYear.selectedIndex].text;
     toYear   = toYear.options[toYear.selectedIndex].text;
-    
+
     i2b2.ExportSQL.model.fromYear = fromYear;
     i2b2.ExportSQL.model.toYear   = toYear;
 
@@ -205,7 +212,7 @@ i2b2.ExportSQL.getResults = function() {
     var qm_id      = i2b2.ExportSQL.model.qm.sdxInfo.sdxKeyValue;
     //var sdxDisplay = $$('DIV#ExportSQL-mainDiv DIV#ExportSQL-InfoSDX')[0];
     
-    try {
+    // try {
 	var result     = i2b2.ExportSQL.processQM(qm_id);
 	var tempTables = i2b2.ExportSQL.uniqueElements(result[0].match(/temp_group_g\d+ /g));
 
@@ -218,11 +225,11 @@ i2b2.ExportSQL.getResults = function() {
 	//     = '<pre>' + result[0] + '</pre>';
 	// Element.select(sdxDisplay, '.msgResponse')[0].innerHTML 
 	//     = '<pre>' + i2b2.h.Escape(result[1]) + '</pre>';
-	//$$("DIV#ExportSQL-mainDiv DIV#ExportSQL-TABS DIV.results-finished")[0].show();
-	document.getElementById('results').show();
-    } catch (e) {
-	alert(e);
-    }
+	//$$("DIV#ExportSQL-mainDiv DIV#ExportSQL-TABS DIV.results-finished")[0].style.display = 'block';
+	document.getElementById('results').style.display = 'block';
+    // } catch (e) {
+	// alert(e);
+    // }
 
     i2b2.ExportSQL.model.dirtyResultsData = false;
 };
@@ -239,9 +246,11 @@ i2b2.ExportSQL.uniqueElements = function(array) {
     var array = array.slice();
 
     for (var i = 0; i < array.length; i++) {
-	if (temp.indexOf(JSON.stringify(array[i])) != -1)
+	// if (temp.indexOf(JSON.stringify(array[i])) != -1)
+	if (temp.indexOf(array[i]) != -1) 
 	    array.splice(i, 1);
-	else temp.push(JSON.stringify(array[i]));
+	// else temp.push(JSON.stringify(array[i]));
+	else temp.push(array[i]);
     }
 
     return array;
@@ -314,7 +323,7 @@ i2b2.ExportSQL.processQM = function(qm_id, outerPanelNumber, outerExclude) {
 	    var constraint = i2b2.h.XPath(panelItems[itemNum], 'descendant::constrain_by_value');
 	    var operator, value;
 
-	    if (!item_key.includes('SA') && !item_key.includes('masterid:'))
+	    if (!item_key.match(/SA/) && !item_key.match(/masterid:/))
 		throw 'processQM(): the QM contains a non-supported query or subquery';
 
 	    if (constraint) {
@@ -322,7 +331,7 @@ i2b2.ExportSQL.processQM = function(qm_id, outerPanelNumber, outerExclude) {
 		value    = i2b2.h.getXNodeVal(constraint[0], 'value_constraint');
 	    }
 
-	    if (item_key.includes('masterid:')) { // subquery
+	    if (item_key.match(/masterid:/)) { // subquery
 		var masterid = item_key.replace('masterid:', '');
 		sql += i2b2.ExportSQL.processQM(
 		    masterid

@@ -18,16 +18,21 @@
 		    <div class="droptrgt SDX-PRS" id="ExportSQL-QMDROP">Drop a query object here</div>
 		    <div class="yearSelects">
 		      <div class="droptrgtlbl">From year:</div>
-		      <select class="selectYear" id="fromYear" onchange="i2b2.ExportSQL.setYear();"></select>
+		      <select class="selectYear" id="fromYear" onchange="i2b2.ExportSQL.setYear();">
+			<option>---</option>
+		      </select>
 		      <div class="droptrgtlbl">To year:</div>
-		      <select class="selectYear" id="toYear" onchange="i2b2.ExportSQL.setYear();"></select>
+		      <select class="selectYear" id="toYear" onchange="i2b2.ExportSQL.setYear();">
+			<option>---</option>
+		      </select>
 		    </div>
 		  </div>
 		  <div class="droptrgt items" style="overflow:auto; height:200px; width:50%; background:white;" id="ExportSQL-IDROP">Drop concepts here</div>
 		  <div class="messagePanel" id="messagePanel"></div>
-		  <br>
-		  <div class="generateBox"><a href="JavaScript:i2b2.ExportSQL.reset()"><span id="resetBoxText">Reset</span></a></div>
-		  <div class="generateBox"><a href="JavaScript:i2b2.ExportSQL.getResults()"><span id="generateBoxText">Generate SQL</span></a></div>
+		  <div class="elementGroupFooter">
+		    <div class="generateBox"><a href="JavaScript:i2b2.ExportSQL.reset()"><span id="resetBoxText">Reset</span></a></div>
+		    <div class="generateBox"><a href="JavaScript:i2b2.ExportSQL.getResults()"><span id="generateBoxText">Generate SQL</span></a></div>
+		  </div>
 		</div>
 		<br>
 		<div class="results-finished" id="results" style="display:none;">
@@ -60,6 +65,7 @@
 		  <h3>Queries containing:</h3>
 		  <li>Event sequences</li>
 		  <li>Folders of the catalogues BSNR or PZN</li>
+		  <li>Non-catalogue folders</li>
 		  <li>...</li>
 		</ul>
 		<h2>About Us</h2>

@@ -14,10 +14,12 @@ DIV#ExportSQL-TABS DIV.ExportSQL-MainContent {
     border: solid #63758C;
     border-width: 1px 0;
     overflow: auto;
+    overflow-y: scroll\9;
     height: 100%;
 }
 DIV#ExportSQL-TABS DIV.ExportSQL-MainContentPad {
     padding: 10px 10px;
+    position: relative;
 }
 
 /*** CSS for the Generate SQL tab ***/
@@ -106,6 +108,10 @@ DIV#ExportSQL-mainDiv DIV.elementGroup {
     overflow: auto;
     width: auto;
     position: relative;
+}
+DIV#ExportSQL-mainDiv DIV.elementGroupFooter {
+    width: 100%;
+    float: right;
 }
 DIV#ExportSQL-mainDiv DIV.messagePanel {
     height: 200px;
