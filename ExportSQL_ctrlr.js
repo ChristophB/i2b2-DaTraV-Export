@@ -286,14 +286,15 @@ i2b2.ExportSQL.processQM = function(qm_id, outerPanelNumber, outerExclude) {
 	+ 'CREATE TABLE ' + tablespace + '.temp_result' + (outerPanelNumber ? '_' + outerPanelNumber : '') + ' AS (<br>';
 
     for (var pnr = 0; pnr < panels.length; pnr++) {
-	var panelNumber        = 'g' + i2b2.h.getXNodeVal(panels[pnr], 'panel_number');
-	var panelExclude       = i2b2.h.getXNodeVal(panels[pnr], 'invert');
-	var panelTiming        = i2b2.h.getXNodeVal(panels[pnr], 'panel_timing') || 'ANY';
-	var panelOccurences    = i2b2.h.getXNodeVal(panels[pnr], 'total_item_occurrences');
-	var panelAccuracy      = i2b2.h.getXNodeVal(panels[pnr], 'panel_accuracy_scale');					
-	var panelDateFrom      = i2b2.ExportSQL.extractDate(i2b2.h.getXNodeVal(panels[pnr], 'panel_date_from'));
-	var panelDateTo        = i2b2.ExportSQL.extractDate(i2b2.h.getXNodeVal(panels[pnr], 'panel_date_to'));
-	var panelItems         = i2b2.h.XPath(panels[pnr], 'descendant::item[item_key]');
+	var panel              = panels[pnr];
+	var panelNumber        = 'g' + i2b2.h.getXNodeVal(panel, 'panel_number');
+	var panelExclude       = i2b2.h.getXNodeVal(panel, 'invert');
+	var panelTiming        = i2b2.h.getXNodeVal(panel, 'panel_timing') || 'ANY';
+	var panelOccurences    = i2b2.h.getXNodeVal(panel, 'total_item_occurrences');
+	var panelAccuracy      = i2b2.h.getXNodeVal(panel, 'panel_accuracy_scale');					
+	var panelDateFrom      = i2b2.ExportSQL.extractDate(i2b2.h.getXNodeVal(panel, 'panel_date_from'));
+	var panelDateTo        = i2b2.ExportSQL.extractDate(i2b2.h.getXNodeVal(panel, 'panel_date_to'));
+	var panelItems         = i2b2.h.XPath(panel, 'descendant::item[item_key]');
 	var subQueryCounter    = 1;
 	var subQueryTempTables = [];
 
@@ -318,15 +319,22 @@ i2b2.ExportSQL.processQM = function(qm_id, outerPanelNumber, outerExclude) {
 	);
 
 	for (var itemNum = 0; itemNum < panelItems.length; itemNum++) {
-	    var item_key   = i2b2.h.getXNodeVal(panelItems[itemNum], 'item_key');
-	    var item_icon  = i2b2.h.getXNodeVal(panelItems[itemNum], 'item_icon');
-	    var constraint = i2b2.h.XPath(panelItems[itemNum], 'descendant::constrain_by_value');
+	    var item       = panelItems[itemNum];
+	    var item_key   = i2b2.h.getXNodeVal(item, 'item_key');
+	    var item_icon  = i2b2.h.getXNodeVal(item, 'item_icon');
+	    var constraint = i2b2.h.XPath(item, 'descendant::constrain_by_value');
+	    var modifier   = i2b2.h.XPath(item, 'descendant::constrain_by_modifier');
 	    var operator, value;
 
-	    if (!item_key.match(/SA/) && !item_key.match(/masterid:/))
+	    if (!item_key.match(/SA/) && !item_key.match(/masterid:/) && !modifier)
 		throw 'processQM(): the QM contains a non-supported query or subquery';
 
-	    if (constraint) {
+	    if (modifier[0]) {
+		item_key   = i2b2.h.getXNodeVal(modifier[0], 'modifier_key');
+		constraint = i2b2.h.XPath(modifier[0], 'descendant::constrain_by_value');
+	    }
+
+	    if (constraint[0]) {
 		operator = i2b2.h.getXNodeVal(constraint[0], 'value_operator');
 		value    = i2b2.h.getXNodeVal(constraint[0], 'value_constraint');
 	    }
