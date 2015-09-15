@@ -40,6 +40,7 @@ i2b2.ExportSQL.Unload = function() {
     return true;
 };
 
+/* resets the plugins model data and redraws the view to initial stage */
 i2b2.ExportSQL.reset = function() {
     i2b2.ExportSQL.model.concepts = [];
     i2b2.ExportSQL.model.fromYear = undefined;
@@ -55,6 +56,10 @@ i2b2.ExportSQL.reset = function() {
     i2b2.ExportSQL.checkModel();
 };
 
+/**
+ * this function is called after modifying a year value in the plugins view
+ * the set or modifyied year will get added to the model data
+ */
 i2b2.ExportSQL.setYear = function() {
     var fromYear = document.getElementById('fromYear');
     var toYear   = document.getElementById('toYear');
@@ -68,6 +73,7 @@ i2b2.ExportSQL.setYear = function() {
     i2b2.ExportSQL.checkModel();
 };
 
+/* redraws the message panel depending on available values in the model data */
 i2b2.ExportSQL.redrawMessagePanel = function() {
     var message     = '';
     var qmText      = 'Drop a previous executed Query from the bottom left "Previous Queries" window.';
@@ -92,6 +98,11 @@ i2b2.ExportSQL.redrawMessagePanel = function() {
     document.getElementById('messagePanel').innerHTML = '<ol>' + message + '</ol>';
 };
 
+/**
+ * handles a droped query master 
+ *
+ * @param {Object[]} sdxData - droped sdx object
+ */
 i2b2.ExportSQL.doDrop = function(sdxData) {
     sdxData = sdxData[0];
     i2b2.ExportSQL.model.qm = sdxData;
@@ -101,6 +112,7 @@ i2b2.ExportSQL.doDrop = function(sdxData) {
     i2b2.ExportSQL.checkModel();		
 };
 
+/* checks if the model data is valid and ready for an execution */
 i2b2.ExportSQL.checkModel = function() {
     var fromYear = i2b2.ExportSQL.model.fromYear;
     var toYear   = i2b2.ExportSQL.model.toYear;
@@ -116,6 +128,11 @@ i2b2.ExportSQL.checkModel = function() {
     i2b2.ExportSQL.redrawMessagePanel();
 };
 
+/** 
+ * handles drop concepts 
+ * 
+ * @param {Object[]} sdxData - droped sdx object
+ */
 i2b2.ExportSQL.doDropConcept = function(sdxData) {
     var concept = {};
     sdxData             = sdxData[0];
@@ -124,7 +141,6 @@ i2b2.ExportSQL.doDropConcept = function(sdxData) {
  
     if (!concept.dimdiColumn.match(/SA\d\d\d[^\\]*$/))
 	return;
-
     i2b2.ExportSQL.model.concepts.push(concept);
     
     var temp = [];
@@ -204,28 +220,24 @@ i2b2.ExportSQL.clearSelection = function() {
     }
 };
 
-/* Refresh the display with info of the SDX record that was DragDropped */
+/* refreshs the display with info of the SDX record that was DragDropped */
 i2b2.ExportSQL.getResults = function() {
     if (!i2b2.ExportSQL.model.dirtyResultsData) {
 	return;
     }
     var qm_id      = i2b2.ExportSQL.model.qm.sdxInfo.sdxKeyValue;
-    //var sdxDisplay = $$('DIV#ExportSQL-mainDiv DIV#ExportSQL-InfoSDX')[0];
     
     try {
 	var result     = i2b2.ExportSQL.processQM(qm_id);
-	var tempTables = i2b2.ExportSQL.uniqueElements(result[0].match(/temp_group_g\d+ /g));
+
+        var tempTables = i2b2.ExportSQL.uniqueElements(
+	    result[0].match(/temp_group_g\d+ |temp_group_g_sameinstance /g)
+	);
 
 	result[0] += '<br><br>' + i2b2.ExportSQL.processItems(tempTables);
 
 	document.getElementById('ExportSQL-StatementBox').innerHTML = 
 	    '<pre>' + result[0] + '</pre>';
-	    //result[0];
-	// Element.select(sdxDisplay, '.sql')[0].innerHTML 
-	//     = '<pre>' + result[0] + '</pre>';
-	// Element.select(sdxDisplay, '.msgResponse')[0].innerHTML 
-	//     = '<pre>' + i2b2.h.Escape(result[1]) + '</pre>';
-	//$$("DIV#ExportSQL-mainDiv DIV#ExportSQL-TABS DIV.results-finished")[0].style.display = 'block';
 	document.getElementById('results').style.display = 'block';
     } catch (e) {
 	alert(e);
@@ -242,15 +254,16 @@ i2b2.ExportSQL.getResults = function() {
  * @return {Object[]} array without duplicates
  */
 i2b2.ExportSQL.uniqueElements = function(array) {
-    var temp = [];
-    var array = array.slice();
+    if (!array) throw 'i2b2.ExportSQL.uniqueElements(): provided array is null';
 
-    for (var i = 0; i < array.length; i++) {
-	// if (temp.indexOf(JSON.stringify(array[i])) != -1)
-	if (temp.indexOf(array[i]) != -1) 
+    var temp = [];
+    var result = array.slice();
+
+    for (var i = array.length - 1; i >= 0; i--) {
+	if (temp.indexOf(result[i]) != -1) 
 	    array.splice(i, 1);
-	// else temp.push(JSON.stringify(array[i]));
 	else temp.push(array[i]);
+
     }
 
     return array;
@@ -280,11 +293,9 @@ i2b2.ExportSQL.processQM = function(qm_id, outerPanelNumber, outerExclude) {
     var timing      = i2b2.h.getXNodeVal(queryDef[0],'query_timing');
     var specificity = i2b2.h.getXNodeVal(queryDef[0],'specificity_scale');
     var panels      = i2b2.h.XPath(queryDef[0], 'descendant::panel');
-    var sql         = '';
-    var resultSql   = 
-	'<br><br>DROP TABLE ' + tablespace + '.temp_result' + (outerPanelNumber ? '_' + outerPanelNumber : '') + ';<br>'
-	+ 'CREATE TABLE ' + tablespace + '.temp_result' + (outerPanelNumber ? '_' + outerPanelNumber : '') + ' AS (<br>';
-
+    var subQuerySql = '';
+    var panelResultTables = [];
+    
     for (var pnr = 0; pnr < panels.length; pnr++) {
 	var panel              = panels[pnr];
 	var panelNumber        = 'g' + i2b2.h.getXNodeVal(panel, 'panel_number');
@@ -296,12 +307,11 @@ i2b2.ExportSQL.processQM = function(qm_id, outerPanelNumber, outerExclude) {
 	var panelDateTo        = i2b2.ExportSQL.extractDate(i2b2.h.getXNodeVal(panel, 'panel_date_to'));
 	var panelItems         = i2b2.h.XPath(panel, 'descendant::item[item_key]');
 	var subQueryCounter    = 1;
-	var subQueryTempTables = [];
 
 	if (!panelDateFrom) { // from date in group is null -> use selected year values
 	    panelDateFrom = i2b2.ExportSQL.extractDate(i2b2.ExportSQL.model.fromYear);
 	    panelDateTo   = i2b2.ExportSQL.extractDate(i2b2.ExportSQL.model.toYear);
-	    alert('Added selected year values to a query or subquery, because it had no dates asigned.');
+	    // alert('Added selected year values to a query or subquery, because it had no dates asigned.');
 	}
 	if (panelDateFrom.Year < i2b2.ExportSQL.model.minStartYear
 	    || (panelDateTo && panelDateTo.Year < i2b2.ExportSQL.model.minStartYear)
@@ -339,38 +349,38 @@ i2b2.ExportSQL.processQM = function(qm_id, outerPanelNumber, outerExclude) {
 		value    = i2b2.h.getXNodeVal(constraint[0], 'value_constraint');
 	    }
 
-	    if (item_key.match(/masterid:/)) { // subquery
+	    
+	    /*** item is querymaster ***/
+	    if (item_key.match(/masterid:/)) {
 		var masterid = item_key.replace('masterid:', '');
-		sql += i2b2.ExportSQL.processQM(
+		subQuerySql += i2b2.ExportSQL.processQM(
 		    masterid
 		    , panelNumber + '_q' + subQueryCounter
 		    , panelExclude
 		)[0];
-		subQueryTempTables.push(tablespace + '.temp_result_' + panelNumber + '_q' + subQueryCounter);
+
 		subQueryCounter++;
+		statement.addSubQueryTable(tablespace + '.temp_result_' + panelNumber + '_q' + subQueryCounter);
 		continue;
 	    }
 	    statement.addItem(item_key, item_icon, operator, value);
 	}
 
-	if (subQueryTempTables.length > 0) {
-	    subQueryTempTables = i2b2.ExportSQL.uniqueElements(subQueryTempTables);
-	    
-	    resultSql += '(SELECT psid FROM ' + tablespace + '.temp_group_' + panelNumber + '<br>UNION<br>'
-		+ subQueryTempTables.map(
-		    function(x) { return 'SELECT psid FROM ' + x; }
-		).join('<br>UNION<br>')
-		+ ')';
+	if (panelTiming != 'SAMEINSTANCENUM') {
+	    panelResultTables.push(tablespace + '.temp_group_' + panelNumber);
 	} else {
-	    resultSql += 'SELECT psid FROM ' + tablespace + '.temp_group_' + panelNumber;
-	}
-
-	if (pnr < panels.length - 1) {
-	    resultSql += '<br>INTERSECT<br>';
+	    panelNumber = panelNumber.replace(/\d*$/, '');
+	    panelResultTables.push(tablespace + '.temp_group_' + panelNumber + '_sameinstance');
 	}
     }
-    resultSql += '<br>);<br><br>';
-    sql = statement.toString2() + sql + resultSql;
+    
+    var sql = 
+	(subQuerySql != '' ? subQuerySql + '<br><br>' : '')
+	+ statement.toString2()
+	+ '<br><br>DROP TABLE ' + tablespace + '.temp_result' + (outerPanelNumber ? '_' + outerPanelNumber : '') + ';<br>'
+	+ 'CREATE TABLE ' + tablespace + '.temp_result' + (outerPanelNumber ? '_' + outerPanelNumber : '') + ' AS (<br>'
+	+ i2b2.ExportSQL.uniqueElements(panelResultTables).map(function(x) { return 'SELECT psid FROM ' + x }).join('<br>INTERSECT<br>')
+	+ '<br>);';
 
     return new Array(sql, results.msgResponse);
 };
@@ -409,7 +419,7 @@ i2b2.ExportSQL.extractDate = function(string) {
  *
  * @return {string} SQL
  */
-i2b2.ExportSQL.tableArrayToString = function(array, joinColumn) { // joinColumn wird nicht mehr gebraucht
+i2b2.ExportSQL.tableArrayToString = function(array) {
     var sql         = '';
     var prevSatzart = '';
     var satzarten   = [];
@@ -418,12 +428,12 @@ i2b2.ExportSQL.tableArrayToString = function(array, joinColumn) { // joinColumn 
     for (var i = 0; i < array.length; i++) {
 	var curSatzart = String(array[i]).replace(/(.*?)(SA\d\d\d)(.*)/, '$2');
 	
-	if (i > 0 || joinColumn) {
+	if (i > 0) {
 	    sql += '<br>' + spaces + 'FULL JOIN<br>' 
 		+ spaces +  array[i] + '<br>'
-		+ spaces + 'ON (' + (joinColumn ? joinColumn : i2b2.ExportSQL.generateCaseString(satzarten, new Array('PSID', 'PSID2'))) 
+		+ spaces + 'ON (' + i2b2.ExportSQL.generateCaseString(satzarten, new Array('PSID', 'PSID2')) 
 		+ ' = ' + i2b2.ExportSQL.generateCaseString(new Array(curSatzart), new Array('PSID', 'PSID2')); 
-	    if (i > 0 || !joinColumn) {
+	    if (i > 0) {
 		sql += '<br>' + spaces + Array(5).join('&nbsp;') + 'AND ' 
 		    + i2b2.ExportSQL.generateCaseString(satzarten, new Array('AUSGLEICHSJAHR')) + ' = ' + curSatzart + '_AUSGLEICHSJAHR';
 	    }
@@ -546,23 +556,6 @@ i2b2.ExportSQL.addLeadingZeros = function(num, size) {
 i2b2.ExportSQL.getStatementObj = function() {
     var statement = {
  	itemGroups: [],
-	
- 	toString: function() {
- 	    var from = [];
-	    var where = [];
-
-	    for (var i = 0; i < this.itemGroups.length; i++) {
-		from = from.concat(this.itemGroups[i].getTables());
-		where.push(this.itemGroups[i].toString());
-	    }
-
-	    if (from.length == 0) throw 'statement.toString(): from clause is empty';
-	    if (where.length == 0) throw 'statement.toString(): where clause is empty';
-	    
-	    return 'SELECT *<br>'
- 		+ 'FROM ' + i2b2.ExportSQL.tableArrayToString(from) + '<br>'
- 		+ 'WHERE ' + where.join('<br>' + Array(7).join('&nbsp;') + 'AND ');
- 	},
 
 	/**
 	 * returns generated SQL statement
@@ -570,23 +563,25 @@ i2b2.ExportSQL.getStatementObj = function() {
 	 * @return {string} SQL statement
 	 */
 	toString2: function() {
-	    return this.itemGroups.map(
-		function(x) { return x.toString2(); }
-	    ).join('<br><br>');
+	    var sql = [this.mergeSqlForItemGroupsWithSameInstanceNum()];
+
+	    for (var i = 0; i < this.itemGroups.length; i++) {
+		if (this.itemGroups[i].getTiming() != 'SAMEINSTANCENUM')
+		    sql.push(this.itemGroups[i].toString2());
+	    }
+	    return sql.join('<br><br>');
 	},
-	
+
 	/**
 	 * generates a string based on the tables of the newest item group
-	 * if joinColumn is not null: result string is handeled as right part
-	 * of a join constraint, where joinColumn is the left tables key column 
 	 *
-	 * @param {string} joinColumn - left tables key column (optional)
 	 * @return {string} tables contatenated to a from clause
 	 */
-	getTablesStringLatestGroup: function(joinColumn) {
-	    if (!this.getLatestItemGroup()) throw 'statement.getTablesStringLatestGroup(): no itemGroups in statement';
+	getTablesStringLatestGroup: function() {
+	    if (!this.getLatestItemGroup())
+		throw 'statement.getTablesStringLatestGroup(): no itemGroups in statement';
 	    return i2b2.ExportSQL.tableArrayToString(
-		this.getLatestItemGroup().getTables(), joinColumn
+		this.getLatestItemGroup().getTables()
 	    );
 	},
 
@@ -602,6 +597,16 @@ i2b2.ExportSQL.getStatementObj = function() {
 	    if (!icon) throw 'statement.addItem(): parameter icon is null';
 	    this.getLatestItemGroup().addItem(item_key, icon, operator, value);
  	},
+
+	/**
+	 * adds a subquerys resulttablename to an item group
+	 *
+	 * @param {string} tablename - resulttablename of the subquery
+	 */
+	addSubQueryTable: function(tablename) {
+	    if (!tablename) throw 'statement.addSubQueryTable(): parameter tablename is null';
+	    this.getLatestItemGroup().addSubQueryTable(tablename);
+	},
 
 	/**
 	 * returns the itemGroup of itemGroups array with the highest index
@@ -625,6 +630,75 @@ i2b2.ExportSQL.getStatementObj = function() {
  		this.tables.push(table);
  	},
 
+	/**
+	 * merges sql of all item groups with timing set to "SAMEINSTANCENUM"
+	 */
+	mergeSqlForItemGroupsWithSameInstanceNum: function() {
+	    var relevantGroups = [];
+	    var tables         = [];
+	    var satzarten      = [];
+	    var fromYear, toYear;
+
+	    for (var i = 0; i < this.itemGroups.length; i++) {
+		var itemGroup = this.itemGroups[i];
+		if (itemGroup.getTiming() != 'SAMEINSTANCENUM')
+		    continue;
+		relevantGroups.push(itemGroup);
+
+		for (var j = 0; j < itemGroup.getTables().length; j ++) {
+		    satzarten = satzarten.concat(
+			itemGroup.getTables()[j].match(/SA\d\d\d/)
+		    );
+		}
+
+		if (!fromYear || fromYear < itemGroup.getFromYear())
+		    fromYear = itemGroup.getFromYear();
+		if (!toYear || toYear > itemGroup.getToYear())
+		    toYear = itemGroup.getToYear();
+	    }
+
+	    /*** generate tablename ***/
+	    var tableName = 
+		relevantGroups[0].getTempTableName().replace(/\d*$/, '')
+		+ '_sameinstance';
+
+	    /*** generate from clause ***/
+	    var fromDate = {};
+	    var toDate   = {};
+	    var tables   = [];
+
+	    if (!fromYear || (toYear && fromYear > toYear))
+		throw 'statement.mergeSqlForItemGroupsWithSameInstanceNum(): Year values of panels with SAMEINSTANCENUM set are not compatible';
+
+	    satzarten = i2b2.ExportSQL.uniqueElements(satzarten);
+
+	    for (var i = 0; i < satzarten.length; i++) {
+		fromDate.Year = fromYear;
+		toDate.Year   = toYear;
+		tables.push(
+		    relevantGroups[0].getTableWithAliasForColumn(
+			satzarten[i]
+			, (fromDate.Year ? fromDate : null)
+			, (toDate.Year ? toDate : null)
+		    )[0]
+		);
+	    }
+
+	    /*** generate where constraints ***/
+	    var whereConstraints = '(' 
+		+ relevantGroups.map(
+		    function(x) { return x.constraintsToString(); }
+		).join('<br>' + Array(7).join('&nbsp;') + ') AND (<br>' + Array(7).join('&nbsp;'))
+		+ ')';
+	    
+	    return 'DROP TABLE ' + tableName + ';<br>'
+		+ 'CREATE TABLE ' + tableName + ' AS (<br>'
+		+ 'SELECT ' + i2b2.ExportSQL.generateCaseString(satzarten, new Array('PSID', 'PSID2'), 'psid') + '<br>'
+		+ 'FROM ' + i2b2.ExportSQL.tableArrayToString(tables) + '<br>'
+		+ 'WHERE ' + whereConstraints + '<br>'
+		+ ');';
+	},
+
  	/**
 	 * starts a new item group with specified constraints
 	 *
@@ -647,25 +721,36 @@ i2b2.ExportSQL.getStatementObj = function() {
 	    }
 
 	    var itemGroup = {
-		number    : number,
- 	     	exclude   : exclude,
-		timing    : timing,
-		occurences: occurences,
-		accuracy  : accuracy,
-		dateFrom  : dateFrom,
-		dateTo    : dateTo,
- 	     	items     : [],
-		tables    : [],
+		number        : number,
+ 	     	exclude       : exclude,
+		timing        : timing,
+		occurences    : occurences,
+		accuracy      : accuracy,
+		dateFrom      : dateFrom,
+		dateTo        : dateTo,
+ 	     	items         : [],
+		tables        : [],
+		subQueryTables: [],
 
 		/**
 		 * transforms the itemGroup to SQL syntax
 		 *
 		 * @return {string} SQL string
 		 */
-		toString: function() {
+		constraintsToString: function() {
  	    	    var sql = this.items.map(
 			function(x) { return x.toString(); }
 		    ).join('<br>' + Array(7).join('&nbsp;') + 'OR ');
+
+		    if (this.subQueryTables.length > 0) {
+			var satzarten = this.getSatzarten();
+			sql += '<br>' + Array(7).join('&nbsp;') + 'OR '
+			    + this.subQueryTables.map(
+			    function(x) {
+				return i2b2.ExportSQL.generateCaseString(satzarten, new Array('PSID', 'PSID2')) + ' IN (SELECT psid FROM ' + x + ')';
+			    }
+			).join('<br>' + Array(7).join('&nbsp;') + 'OR ');
+		    }
 
 		    if (this.exclude == 1)
 			sql = 'NOT (' + sql + ')';
@@ -686,8 +771,21 @@ i2b2.ExportSQL.getStatementObj = function() {
 			    + 'CREATE TABLE ' + tablespace + '.' + this.getTempTableName() + ' (psid char(19));';
 		    }
 		    if (this.tables.length == 0) throw 'itemGroup.toString2(): no tables for the group available';
-		    
-		    var satzarten = this.tables.map(
+
+		    return 'DROP TABLE ' + tablespace + '.' + this.getTempTableName() + ';<br>'
+			+ 'CREATE TABLE ' + tablespace + '.' + this.getTempTableName() + ' AS (<br>'
+			+ 'SELECT ' + i2b2.ExportSQL.generateCaseString(this.getSatzarten(), new Array('PSID', 'PSID2'), 'psid') + '<br>'
+			+ 'FROM ' + i2b2.ExportSQL.tableArrayToString(this.tables) + '<br>'
+			+ 'WHERE ' + this.constraintsToString() + '<br>);';
+		},
+
+		/**
+		 * returns an array of used satzarten
+		 *
+		 * @return {Object[]} array of satzarten
+		 */
+		getSatzarten: function() {
+		    return this.tables.map(
 			function(x) {
 			    var satzartNr = x.replace(/(.*?)(SA)(\d\d\d)(.*)/, '$3');
 			    if (isNaN(satzartNr)) 
@@ -695,12 +793,15 @@ i2b2.ExportSQL.getStatementObj = function() {
 			    return 'SA' + satzartNr;
 			}
 		    );
+		},
 
-		    return 'DROP TABLE ' + tablespace + '.' + this.getTempTableName() + ';<br>'
-			+ 'CREATE TABLE ' + tablespace + '.' + this.getTempTableName() + ' AS (<br>'
-			+ 'SELECT ' + i2b2.ExportSQL.generateCaseString(satzarten, new Array('PSID', 'PSID2'), 'psid') + '<br>'
-			+ 'FROM ' + i2b2.ExportSQL.tableArrayToString(this.tables) + '<br>'
-			+ 'WHERE ' + this.toString() + '<br>);';
+		/**
+		 * returns the timing value of this item group
+		 *
+		 * @return {string} timing
+		 */
+		getTiming: function() {
+		    return this.timing;
 		},
 
 		/**
@@ -710,6 +811,26 @@ i2b2.ExportSQL.getStatementObj = function() {
 		 */
 		getTables: function() {
 		    return this.tables;
+		},
+
+		/**
+		 * returns year value of dateFrom
+		 *
+		 * @return {integer} fromYear
+		 */
+		getFromYear: function() {
+		    if (!this.dateFrom) return null;
+		    return this.dateFrom.Year;
+		},
+
+		/**
+		 * returns year value of dateTo
+		 *
+		 * @return {integer} toYear
+		 */
+		getToYear: function() {
+		    if (!this.dateTo) return null;
+		    return this.dateTo.Year;
 		},
 
 		/**
@@ -728,34 +849,36 @@ i2b2.ExportSQL.getStatementObj = function() {
 		 * the table name gets generated for each year (connected by UNION ALL)
 		 * 
 		 * @param {string} dimdiColumn - valid dimdi database column name
-		 * @return {Object} array with table and alias 
+		 * @param {integer} dateFrom
+		 * @param {integer} dateTo
+		 * @return {Object} array with table and alias
 		 */
-		getTableWithAliasForColumn: function(dimdiColumn) {
+		getTableWithAliasForColumn: function(dimdiColumn, dateFrom, dateTo) {
 		    if (!dimdiColumn) throw 'itemGroup.getTableWithAliasForColumn(): parameter dimdiColumn is null';
 		    var table = '';
 		    var alias = '';
 
-		    if (!this.dateFrom) {
+		    if (!dateFrom) {
 			throw 'itemGroup.getTableWithAliasForColumn(): dateFrom is null';
-		    } else if(this.dateFrom && this.dateTo 
-			      && this.dateFrom.Year > this.dateTo.Year
+		    } else if(dateFrom && dateTo 
+			      && dateFrom.Year > dateTo.Year
 			     ) {
 			throw 'itemGroup.getTableWithAliasForColumn(): from-year is greater then to-year';
-		    } else if (this.dateFrom 
-			       && (!this.dateTo || this.dateFrom == this.dateTo)
+		    } else if (dateFrom 
+			       && (!dateTo || dateFrom == dateTo)
 			      ) { // missing or equal to-date
-			table = this.extractTableWithTablespace(dimdiColumn, this.dateFrom.Year);
-			alias = this.extractTable(dimdiColumn, this.dateFrom.Year);
+			table = this.extractTableWithTablespace(dimdiColumn, dateFrom.Year);
+			alias = this.extractTable(dimdiColumn, dateFrom.Year);
 		    } else { // from- and to-date given
-			for (var i = this.dateFrom.Year; i <= this.dateTo.Year; i++) {
+			for (var i = dateFrom.Year; i <= dateTo.Year; i++) {
 		    	    table += 'SELECT * FROM ' + this.extractTableWithTablespace(dimdiColumn, i);
 			    alias += this.extractTable(dimdiColumn, i);
-			    if (i < this.dateTo.Year) {
+			    if (i < dateTo.Year) {
 				table += ' UNION ALL ';
 				alias += '_';
 			    }
 			}
-			alias = 'V' + this.dateFrom.Year + '_' + this.extractTable(dimdiColumn, this.dateTo.Year);
+			alias = 'V' + dateFrom.Year + '_' + this.extractTable(dimdiColumn, dateTo.Year);
 			table = '(' + table + ')'; 
 		    }
 		    return new Array(table, alias);
@@ -763,12 +886,12 @@ i2b2.ExportSQL.getStatementObj = function() {
 
 		getTableForColumn: function(dimdiColumn) {
 		    if (!dimdiColumn) throw 'itemGroup.getTableForColumn(): parameter dimdiColumn is null';
-		    return this.getTableWithAliasForColumn(dimdiColumn)[0];
+		    return this.getTableWithAliasForColumn(dimdiColumn, this.dateFrom, this.dateTo)[0];
 		},
 
 		getAliasForColumn: function(dimdiColumn) {
 		    if (!dimdiColumn) throw 'itemGroup.getAliasForColumn(): parameter dimdiColumn is null';
-		    return this.getTableWithAliasForColumn(dimdiColumn)[1];
+		    return this.getTableWithAliasForColumn(dimdiColumn, this.dateFrom, this.dateTo)[1];
 		},
 
 		/**
@@ -783,6 +906,16 @@ i2b2.ExportSQL.getStatementObj = function() {
 
 		    if (this.tables.indexOf(table) < 0)
 			this.tables.push(table);
+		},
+
+		/**
+		 * adds a subquerys resulttablename to the itemGroup
+		 *
+		 * @param {string} tablename - name of the resulttable
+		 */
+		addSubQueryTable: function(tablename) {
+		    if (!tablename) throw 'itemGroup.addSubQueryTable(): parameter tablename is null';
+		    this.subQueryTables.push(tablename);
 		},
 
 		/**
@@ -857,7 +990,7 @@ i2b2.ExportSQL.getStatementObj = function() {
 				    ).join(', ') + ')';
 				} else // no leafs in the folder
 				    throw 'item.generateBSNRConstraint() for folder not yet implemented';
-			    } else { //leaf
+			    } else { // leaf
 				return this.dimdiColumn + ' = ' + parseInt(value);
 			    }
 			},
@@ -867,7 +1000,7 @@ i2b2.ExportSQL.getStatementObj = function() {
 				return this.dimdiColumn + ' IS NOT NULL';
 			    else if (this.icon.match(/F/)) { // folder
 				throw 'item.generatePZNConstraint() for folder not yet implemented';
-			    } else //leaf
+			    } else // leaf
 				return this.dimdiColumn + ' = ' + parseInt(value);
 			},
 
@@ -877,7 +1010,7 @@ i2b2.ExportSQL.getStatementObj = function() {
 			    else if (this.icon.match(/F/)) { // folder
 				return this.dimdiColumn + '::Text'
 				    + " LIKE '" + parseInt(value) + "%'";
-			    } else //leaf
+			    } else // leaf
 				return this.dimdiColumn + ' = ' + parseInt(value);
 			},
 
@@ -900,7 +1033,7 @@ i2b2.ExportSQL.getStatementObj = function() {
 				} else { // single code group with decimal places
 				    return this.dimdiColumn + " LIKE '" + value + "%'";
 				}
-			    } else //leaf
+			    } else // leaf
 				return this.dimdiColumn + " LIKE '" + value + "%'"; // % because of optional special characters
 			},
 
@@ -1029,7 +1162,7 @@ i2b2.ExportSQL.getStatementObj = function() {
 
 			    if (isNaN(satzartNr)) throw 'item.getDatatype(): dimdiColumn does not contain a valid satzartNr';
 			    if ((satzartNr == 551 || satzartNr == 651)
-				&& (new RegExp('DIAGNOSE|ICD|QUALIFIZIERUNG')).test(this.dimdiColumn)
+				&& this.dimdiColumn.match(/DIAGNOSE|ICD|QUALIFIZIERUNG/)
 			       )
 				return 'string';
 
