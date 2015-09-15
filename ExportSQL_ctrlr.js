@@ -259,14 +259,14 @@ i2b2.ExportSQL.uniqueElements = function(array) {
     var temp = [];
     var result = array.slice();
 
-    for (var i = array.length - 1; i >= 0; i--) {
+    for (var i = result.length - 1; i >= 0; i--) {
 	if (temp.indexOf(result[i]) != -1) 
-	    array.splice(i, 1);
-	else temp.push(array[i]);
+	    result.splice(i, 1);
+	else temp.push(result[i]);
 
     }
 
-    return array;
+    return result;
 };
 
 /**
