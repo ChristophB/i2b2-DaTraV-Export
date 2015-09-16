@@ -227,7 +227,7 @@ i2b2.ExportSQL.getResults = function() {
     }
     var qm_id      = i2b2.ExportSQL.model.qm.sdxInfo.sdxKeyValue;
     
-    try {
+    // try {
 	var result     = i2b2.ExportSQL.processQM(qm_id);
 
         var tempTables = i2b2.ExportSQL.uniqueElements(
@@ -239,9 +239,9 @@ i2b2.ExportSQL.getResults = function() {
 	document.getElementById('ExportSQL-StatementBox').innerHTML = 
 	    '<pre>' + result[0] + '</pre>';
 	document.getElementById('results').style.display = 'block';
-    } catch (e) {
-	alert(e);
-    }
+    // } catch (e) {
+    // 	alert(e);
+    // }
 
     i2b2.ExportSQL.model.dirtyResultsData = false;
 };
@@ -359,8 +359,8 @@ i2b2.ExportSQL.processQM = function(qm_id, outerPanelNumber, outerExclude) {
 		    , panelExclude
 		)[0];
 
-		subQueryCounter++;
 		statement.addSubQueryTable(tablespace + '.temp_result_' + panelNumber + '_q' + subQueryCounter);
+		subQueryCounter++;
 		continue;
 	    }
 	    statement.addItem(item_key, item_icon, operator, value);
@@ -657,6 +657,8 @@ i2b2.ExportSQL.getStatementObj = function() {
 		    toYear = itemGroup.getToYear();
 	    }
 
+	    if (relevantGroups.length == 0) return;
+
 	    /*** generate tablename ***/
 	    var tableName = 
 		relevantGroups[0].getTempTableName().replace(/\d*$/, '')
@@ -744,7 +746,7 @@ i2b2.ExportSQL.getStatementObj = function() {
 
 		    if (this.subQueryTables.length > 0) {
 			var satzarten = this.getSatzarten();
-			sql += '<br>' + Array(7).join('&nbsp;') + 'OR '
+			sql += (sql ? '<br>' + Array(7).join('&nbsp;') + 'OR ' : '')
 			    + this.subQueryTables.map(
 			    function(x) {
 				return i2b2.ExportSQL.generateCaseString(satzarten, new Array('PSID', 'PSID2')) + ' IN (SELECT psid FROM ' + x + ')';
@@ -766,12 +768,20 @@ i2b2.ExportSQL.getStatementObj = function() {
 		toString2: function() {
 		    var tablespace = i2b2.ExportSQL.model.tablespace;
 
-		    if (this.items.length == 0) {
+		    if (this.items.length == 0 && this.subQueryTables.length == 0) {
 			return 'DROP TABLE ' + tablespace + '.' + this.getTempTableName() + ';<br>'
 			    + 'CREATE TABLE ' + tablespace + '.' + this.getTempTableName() + ' (psid char(19));';
 		    }
-		    if (this.tables.length == 0) throw 'itemGroup.toString2(): no tables for the group available';
-
+		    // if (this.tables.length == 0) throw 'itemGroup.toString2(): no tables for the group available';
+		    if (this.items.length == 0 && this.subQueryTables.length > 0) {
+			return 'DROP TABLE ' + tablespace + '.' + this.getTempTableName() + ';<br>'
+			    + 'CREATE TABLE ' + tablespace + '.' + this.getTempTableName() + ' AS (<br>'
+			    + this.subQueryTables.map(
+				function(x) { return 'SELECT psid FROM ' + x; }
+			    ).join('<br>UNION<br>')
+			    + '<br>);';
+		    }
+		    
 		    return 'DROP TABLE ' + tablespace + '.' + this.getTempTableName() + ';<br>'
 			+ 'CREATE TABLE ' + tablespace + '.' + this.getTempTableName() + ' AS (<br>'
 			+ 'SELECT ' + i2b2.ExportSQL.generateCaseString(this.getSatzarten(), new Array('PSID', 'PSID2'), 'psid') + '<br>'
