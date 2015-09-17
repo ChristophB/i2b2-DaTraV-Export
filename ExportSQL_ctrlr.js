@@ -482,14 +482,16 @@ i2b2.ExportSQL.tableArrayToString = function(array) {
  *
  * @param {Object[]} satzarten - array of Satzarten
  * @param {Object[]} sufix - first element is sufix of normal column, following: columns concatenated with AUSGLEICHSJAHR
- * @param {string} alias - alias for the CASE expression
+ * @param {string} alias - alias for the CASE expression (optional)
+ + @param {string} outerAlias - alias of the outer querys from-tables (optional)
  *
  * @return {string} SQL CASE expression
  */
-i2b2.ExportSQL.generateCaseString = function(satzarten, sufix, alias) {
-    var sql       = '';
-    var satzarten = satzarten.slice();
-    alias = alias ? ' AS ' + alias : '';
+i2b2.ExportSQL.generateCaseString = function(satzarten, sufix, alias, outerAlias) {
+    var sql        = '';
+    var satzarten  = satzarten.slice();
+    var outerAlias = outerAlias ? outerAlias + '.' : '';
+    var alias      = alias ? ' AS ' + alias : '';
 
     if (!satzarten || !sufix) return '';
     if (sufix[0].match(/PSID2/) && satzarten.indexOf('SA999') != -1)
@@ -503,14 +505,15 @@ i2b2.ExportSQL.generateCaseString = function(satzarten, sufix, alias) {
     
     if (sufix.length == 0 || satzarten.length == 0) return '';
     if (satzarten.length == 1 && sufix.length == 1)
-	return satzarten[0] + '_' + sufix + alias;
+	return outerAlias + satzarten[0] + '_' + sufix + alias;
 
     for (var o = 0; o < sufix.length; o++) { 
 	for (var i = 0; i < satzarten.length; i++) {
 	    if (sufix[o].match(/PSID2/) && satzarten[i].match(/SA999/)) continue;
 	    if (sufix[o].match(/BERICHSTJAHR/) && satzarten[i].match(/SA951/)) continue;
-	    sql += ' WHEN ' + satzarten[i] + '_' + sufix[o] + ' IS NOT NULL THEN '
-		+ (o > 0 ? satzarten[i] + "_AUSGLEICHSJAHR || '_' || " : '') + satzarten[i] + '_' + sufix[o];
+	    sql += ' WHEN ' + outerAlias + satzarten[i] + '_' + sufix[o] + ' IS NOT NULL THEN '
+		+ (o > 0 ? outerAlias + satzarten[i] + "_AUSGLEICHSJAHR || '_' || " : '')
+		+ outerAlias + satzarten[i] + '_' + sufix[o];
 	}
     }
     if (sql == '') return '';
@@ -785,16 +788,18 @@ i2b2.ExportSQL.getStatementObj = function() {
 		    }
 
 		    if (this.occurences > 1) {
-			var caseStringPsid = i2b2.ExportSQL.generateCaseString(satzarten, new Array('PSID', 'PSID2'));
-			var caseStringAusg = i2b2.ExportSQL.generateCaseString(satzarten, new Array('AUSGLEICHSJAHR'));
+			var caseStringPsid1 = i2b2.ExportSQL.generateCaseString(satzarten, new Array('PSID', 'PSID2'));
+			var caseStringPsid2 = i2b2.ExportSQL.generateCaseString(satzarten, new Array('q.PSID', 'q.PSID2'), null, 'q');
+			var caseStringAusg1 = i2b2.ExportSQL.generateCaseString(satzarten, new Array('AUSGLEICHSJAHR'));
+			var caseStringAusg2 = i2b2.ExportSQL.generateCaseString(satzarten, new Array('AUSGLEICHSJAHR'), null, 'q');
 
 			sql = this.occurences + ' <=<br>'
 			    + Array(7).join('&nbsp;') + '(SELECT count(*)<br>'
 			    + Array(8).join('&nbsp;') + 'FROM ' + i2b2.ExportSQL.tableArrayToString(this.tables) + '<br>'
 			    + Array(8).join('&nbsp;') + 'WHERE (<br>' 
 			    + Array(8).join('&nbsp;') +        sql + ')<br>'
-			    + Array(8).join('&nbsp;') +        'AND ' + caseStringPsid + ' = q.' + caseStringPsid + '<br>'
-			    + Array(8).join('&nbsp;') +        'AND ' + caseStringAusg + ' = q.' + caseStringAusg + '<br>'
+			    + Array(8).join('&nbsp;') +        'AND ' + caseStringPsid1 + ' = ' + caseStringPsid2 + '<br>'
+			    + Array(8).join('&nbsp;') +        'AND ' + caseStringAusg1 + ' = ' + caseStringAusg2 + '<br>'
 			    + Array(7).join('&nbsp;') + ')';
 		    }
 
