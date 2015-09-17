@@ -366,11 +366,16 @@ i2b2.ExportSQL.processQM = function(qm_id, outerPanelNumber, outerExclude) {
 	    statement.addItem(item_key, item_icon, operator, value);
 	}
 
-	if (panelTiming != 'SAMEINSTANCENUM') {
-	    panelResultTables.push(tablespace + '.temp_group_' + panelNumber);
-	} else {
+	switch (panelTiming) {
+	case 'SAMEINSTANCENUM':
 	    panelNumber = panelNumber.replace(/\d*$/, '');
 	    panelResultTables.push(tablespace + '.temp_group_' + panelNumber + '_sameinstance');
+	    break;
+	case 'SAMEVISIT':
+	    panelResultTables.push(tablespace + '.temp_group_' + panelNumber + '_samevisit');
+	    break;
+	default:
+	    panelResultTables.push(tablespace + '.temp_group_' + panelNumber);
 	}
     }
     
@@ -378,9 +383,34 @@ i2b2.ExportSQL.processQM = function(qm_id, outerPanelNumber, outerExclude) {
 	(subQuerySql != '' ? subQuerySql + '<br><br>' : '')
 	+ statement.toString2()
 	+ '<br><br>DROP TABLE ' + tablespace + '.temp_result' + (outerPanelNumber ? '_' + outerPanelNumber : '') + ';<br>'
-	+ 'CREATE TABLE ' + tablespace + '.temp_result' + (outerPanelNumber ? '_' + outerPanelNumber : '') + ' AS (<br>'
-	+ i2b2.ExportSQL.uniqueElements(panelResultTables).map(function(x) { return 'SELECT psid FROM ' + x }).join('<br>INTERSECT<br>')
-	+ '<br>);';
+	+ 'CREATE TABLE ' + tablespace + '.temp_result' + (outerPanelNumber ? '_' + outerPanelNumber : '') + ' AS (<br>';
+
+
+    /*** INTERSECT expression for WHERE constraints ***/
+    var sameVisitTables = [];
+    var diffVisitTables = [];
+    panelResultTables = i2b2.ExportSQL.uniqueElements(panelResultTables);
+
+    for (var i = 0; i < panelResultTables.length; i++) {
+	var curResultTable = panelResultTables[i];
+	if (curResultTable.match(/samevisit/))
+	    sameVisitTables.push(curResultTable);
+	else diffVisitTables.push(curResultTable);
+    }
+    if (sameVisitTables.length > 0) {
+	sql += 'SELECT psid FROM (<br>'
+	    + sameVisitTables.map(
+		function(x) { return 'SELECT psid, ausgleichsjahr FROM ' + x }
+	    ).join('<br>INTERSECT<br>')
+	    + '<br>)';
+    }
+    if (diffVisitTables.length > 0) {
+	sql += (sameVisitTables.length > 0 ? '<br>INTERSECT<br>' : '')
+	    + diffVisitTables.map(
+	    function(x) { return 'SELECT psid FROM ' + x }
+	).join('<br>INTERSECT<br>');
+    }
+    sql += '<br>);';
 
     return new Array(sql, results.msgResponse);
 };
@@ -432,12 +462,10 @@ i2b2.ExportSQL.tableArrayToString = function(array) {
 	    sql += '<br>' + spaces + 'FULL JOIN<br>' 
 		+ spaces +  array[i] + '<br>'
 		+ spaces + 'ON (' + i2b2.ExportSQL.generateCaseString(satzarten, new Array('PSID', 'PSID2')) 
-		+ ' = ' + i2b2.ExportSQL.generateCaseString(new Array(curSatzart), new Array('PSID', 'PSID2')); 
-	    if (i > 0) {
-		sql += '<br>' + spaces + Array(5).join('&nbsp;') + 'AND ' 
-		    + i2b2.ExportSQL.generateCaseString(satzarten, new Array('AUSGLEICHSJAHR')) + ' = ' + curSatzart + '_AUSGLEICHSJAHR';
-	    }
-	    sql += ')';
+		+ ' = ' + i2b2.ExportSQL.generateCaseString(new Array(curSatzart), new Array('PSID', 'PSID2')) 
+		+ '<br>' + spaces + Array(5).join('&nbsp;') + 'AND ' 
+		+ i2b2.ExportSQL.generateCaseString(satzarten, new Array('AUSGLEICHSJAHR')) + ' = ' + curSatzart + '_AUSGLEICHSJAHR'
+		+ ')';
 	} else {
 	    sql += array[i];
 	}
@@ -527,7 +555,7 @@ i2b2.ExportSQL.processItems = function(tempTables) {
 	+       spaces + items.join(', ') + '<br>'
 	+ 'FROM ' + statement.getTablesStringLatestGroup() + '<br>'
 	+ 'WHERE ' + i2b2.ExportSQL.generateCaseString(satzarten, new Array('PSID', 'PSID2')) 
-	+       ' IN(<br>' + Array(7).join('&nbsp;') + 'SELECT psid FROM ' + tablespace + '.temp_result WHERE psid IS NOT NULL)<br>'
+	+       ' IN(<br>' + Array(7).join('&nbsp;') + 'SELECT psid, ausgleichsjahr FROM ' + tablespace + '.temp_result WHERE psid IS NOT NULL)<br>'
 	+ 'ORDER BY 1, 2, 3;';
 };
 
@@ -696,7 +724,7 @@ i2b2.ExportSQL.getStatementObj = function() {
 	    return 'DROP TABLE ' + tableName + ';<br>'
 		+ 'CREATE TABLE ' + tableName + ' AS (<br>'
 		+ 'SELECT ' + i2b2.ExportSQL.generateCaseString(satzarten, new Array('PSID', 'PSID2'), 'psid') + '<br>'
-		+ 'FROM ' + i2b2.ExportSQL.tableArrayToString(tables) + '<br>'
+		+ 'FROM (' + i2b2.ExportSQL.tableArrayToString(tables) + ') q<br>'
 		+ 'WHERE ' + whereConstraints + '<br>'
 		+ ');';
 	},
@@ -743,15 +771,31 @@ i2b2.ExportSQL.getStatementObj = function() {
  	    	    var sql = this.items.map(
 			function(x) { return x.toString(); }
 		    ).join('<br>' + Array(7).join('&nbsp;') + 'OR ');
+		    
+		    var satzarten = this.getSatzarten();
 
 		    if (this.subQueryTables.length > 0) {
-			var satzarten = this.getSatzarten();
+			
 			sql += (sql ? '<br>' + Array(7).join('&nbsp;') + 'OR ' : '')
 			    + this.subQueryTables.map(
 			    function(x) {
 				return i2b2.ExportSQL.generateCaseString(satzarten, new Array('PSID', 'PSID2')) + ' IN (SELECT psid FROM ' + x + ')';
 			    }
 			).join('<br>' + Array(7).join('&nbsp;') + 'OR ');
+		    }
+
+		    if (this.occurences > 1) {
+			var caseStringPsid = i2b2.ExportSQL.generateCaseString(satzarten, new Array('PSID', 'PSID2'));
+			var caseStringAusg = i2b2.ExportSQL.generateCaseString(satzarten, new Array('AUSGLEICHSJAHR'));
+
+			sql = this.occurences + ' <=<br>'
+			    + Array(7).join('&nbsp;') + '(SELECT count(*)<br>'
+			    + Array(8).join('&nbsp;') + 'FROM ' + i2b2.ExportSQL.tableArrayToString(this.tables) + '<br>'
+			    + Array(8).join('&nbsp;') + 'WHERE (<br>' 
+			    + Array(8).join('&nbsp;') +        sql + ')<br>'
+			    + Array(8).join('&nbsp;') +        'AND ' + caseStringPsid + ' = q.' + caseStringPsid + '<br>'
+			    + Array(8).join('&nbsp;') +        'AND ' + caseStringAusg + ' = q.' + caseStringAusg + '<br>'
+			    + Array(7).join('&nbsp;') + ')';
 		    }
 
 		    if (this.exclude == 1)
@@ -767,25 +811,25 @@ i2b2.ExportSQL.getStatementObj = function() {
 		 */
 		toString2: function() {
 		    var tablespace = i2b2.ExportSQL.model.tablespace;
+		    var satzarten  = this.getSatzarten();
 
-		    if (this.items.length == 0 && this.subQueryTables.length == 0) {
-			return 'DROP TABLE ' + tablespace + '.' + this.getTempTableName() + ';<br>'
-			    + 'CREATE TABLE ' + tablespace + '.' + this.getTempTableName() + ' (psid char(19));';
-		    }
-		    // if (this.tables.length == 0) throw 'itemGroup.toString2(): no tables for the group available';
+		    if (this.tables.length == 0 && this.subQueryTables.length > 0)
+			throw 'itemGroup.toString2(): no data for the group available';
+		    
 		    if (this.items.length == 0 && this.subQueryTables.length > 0) {
 			return 'DROP TABLE ' + tablespace + '.' + this.getTempTableName() + ';<br>'
 			    + 'CREATE TABLE ' + tablespace + '.' + this.getTempTableName() + ' AS (<br>'
 			    + this.subQueryTables.map(
-				function(x) { return 'SELECT psid FROM ' + x; }
+				function(x) { return 'SELECT psid, ausgleichsjahr FROM ' + x; }
 			    ).join('<br>UNION<br>')
 			    + '<br>);';
 		    }
 		    
 		    return 'DROP TABLE ' + tablespace + '.' + this.getTempTableName() + ';<br>'
 			+ 'CREATE TABLE ' + tablespace + '.' + this.getTempTableName() + ' AS (<br>'
-			+ 'SELECT ' + i2b2.ExportSQL.generateCaseString(this.getSatzarten(), new Array('PSID', 'PSID2'), 'psid') + '<br>'
-			+ 'FROM ' + i2b2.ExportSQL.tableArrayToString(this.tables) + '<br>'
+			+ 'SELECT ' + i2b2.ExportSQL.generateCaseString(satzarten, new Array('PSID', 'PSID2'), 'psid') + ',<br>' 
+			+ Array(8).join('&nbsp;') + i2b2.ExportSQL.generateCaseString(satzarten, new Array('AUSGLEICHSJAHR'), 'ausgleichsjahr') + '<br>'
+			+ 'FROM (' + i2b2.ExportSQL.tableArrayToString(this.tables) + ') q<br>'
 			+ 'WHERE ' + this.constraintsToString() + '<br>);';
 		},
 
@@ -984,7 +1028,6 @@ i2b2.ExportSQL.getStatementObj = function() {
  	    		value      : value,
 			table      : table,
 			alias      : alias,
-			occurences : this.occurences,
 			icon       : icon,
 
 			generateBSNRConstraint: function(catalogue, value) {
@@ -1075,8 +1118,6 @@ i2b2.ExportSQL.getStatementObj = function() {
 			    if (!this.dimdiColumn) throw 'item.toString(): dimdiColumn is null';
 			    if (!this.item_key) throw 'item.toString(): item_key is null';
 			    if (!this.icon) throw 'item.toString(): icon is null';
-			    if (!this.occurences) throw 'item.toString(): occurences is null';
-			    if (!this.alias) throw 'item.toString(): alias is null';
 
 			    var sql        = '';
 			    var constraint = '';
@@ -1097,18 +1138,7 @@ i2b2.ExportSQL.getStatementObj = function() {
 				    + this.getModifiedValue();
 			    }
 
-			    if (this.occurences > 1) {
-				sql = this.occurences + ' <= '
-				    + '(SELECT count(*)'
-				    + ' FROM ' + this.table
-				    + ' WHERE ' + constraint
-				    +       ' AND ' + satzart + '_PSID = ' + this.alias + '.' + satzart + '_PSID'
-				    + ')';
-			    } else {
-				sql = constraint;
-			    }
-
-			    return sql;
+			    return constraint;
  	    		},
 
 			/** 
