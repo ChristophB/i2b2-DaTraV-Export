@@ -227,7 +227,7 @@ i2b2.ExportSQL.getResults = function() {
     }
     var qm_id      = i2b2.ExportSQL.model.qm.sdxInfo.sdxKeyValue;
     
-    // try {
+    try {
 	var result     = i2b2.ExportSQL.processQM(qm_id);
 
         var tempTables = i2b2.ExportSQL.uniqueElements(
@@ -239,9 +239,9 @@ i2b2.ExportSQL.getResults = function() {
 	document.getElementById('ExportSQL-StatementBox').innerHTML = 
 	    '<pre>' + result[0] + '</pre>';
 	document.getElementById('results').style.display = 'block';
-    // } catch (e) {
-    // 	alert(e);
-    // }
+    } catch (e) {
+    	alert(e);
+    }
 
     i2b2.ExportSQL.model.dirtyResultsData = false;
 };
@@ -594,7 +594,10 @@ i2b2.ExportSQL.getStatementObj = function() {
 	 * @return {string} SQL statement
 	 */
 	toString2: function() {
-	    var sql = [this.mergeSqlForItemGroupsWithSameInstanceNum()];
+	    var sql = [];
+	    var mergedSameInstances = this.mergeSqlForItemGroupsWithSameInstanceNum();
+
+	    if (mergedSameInstances) sql = sql.push(mergedSameInstances);
 
 	    for (var i = 0; i < this.itemGroups.length; i++) {
 		if (this.itemGroups[i].getTiming() != 'SAMEINSTANCENUM')
