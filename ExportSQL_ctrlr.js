@@ -1041,7 +1041,7 @@ i2b2.ExportSQL.getStatementObj = function() {
 			generateBSNRConstraint: function(catalogue, value) {
 			    if (value == catalogue) // toplevel
 				return this.dimdiColumn + ' IS NOT NULL';
-			    else if (this.icon.match(/F/)) { // folder
+			    else if (this.icon.match(/F|D/)) { // folder
 				if (value.match(/^\d*_\d*$/)) { // folder containins leafs for east and west BSNR
 				    return this.dimdiColumn
 				    + ' IN (' + value.split('_').filter(
@@ -1059,7 +1059,7 @@ i2b2.ExportSQL.getStatementObj = function() {
 			generatePZNConstraint: function(catalogue, value) {
 			    if (value == catalogue) // toplevel
 				return this.dimdiColumn + ' IS NOT NULL';
-			    else if (this.icon.match(/F/)) { // folder
+			    else if (this.icon.match(/F|D/)) { // folder
 				throw 'item.generatePZNConstraint() for folder not yet implemented';
 			    } else // leaf
 				return this.dimdiColumn + ' = ' + parseInt(value);
@@ -1068,7 +1068,7 @@ i2b2.ExportSQL.getStatementObj = function() {
 			generateAGSConstraint: function(catalogue, value) {
 			    if (value == catalogue) // toplevel
 				return this.dimdiColumn + ' IS NOT NULL';
-			    else if (this.icon.match(/F/)) { // folder
+			    else if (this.icon.match(/F|D/)) { // folder
 				return this.dimdiColumn + '::Text'
 				    + " LIKE '" + parseInt(value) + "%'";
 			    } else // leaf
@@ -1078,7 +1078,7 @@ i2b2.ExportSQL.getStatementObj = function() {
 			generateICD10GMConstraint: function(catalogue, value) {
 			    if (value == catalogue) // toplevel
 				return this.dimdiColumn + ' IS NOT NULL';
-			    else if (this.icon.match(/F/)) { // folder
+			    else if (this.icon.match(/F|D/)) { // folder
 				if (!value.match(/\d/)) { // upper class without codes
 				    return this.dimdiColumn + ' IN (SELECT CODE '
 					+ 'FROM ' + i2b2.ExportSQL.model.tablespace + '.ICDCODES ' 
