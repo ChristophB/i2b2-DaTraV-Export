@@ -1041,19 +1041,17 @@ i2b2.ExportSQL.getStatementObj = function() {
 			generateBSNRConstraint: function(catalogue, value) {
 			    if (value == catalogue) // toplevel
 				return this.dimdiColumn + ' IS NOT NULL';
-			    else if (this.icon.match(/F|D/)) { // folder
-				if (value.match(/^\d*_\d*$/)) { // folder containins leafs for east and west BSNR
-				    return this.dimdiColumn
+			    else if (value.match(/^\d*_\d*$/)) { // folder containins leafs for east and west BSNR
+				return this.dimdiColumn
 				    + ' IN (' + value.split('_').filter(
 					function(x) { return x; }
 				    ).map(
 					function(x) { return parseInt(x) }
 				    ).join(', ') + ')';
-				} else // no leafs in the folder
-				    throw 'item.generateBSNRConstraint() for folder not yet implemented';
-			    } else { // leaf
+			    } else if (value.math(/^\d*$/)) { // leaf
 				return this.dimdiColumn + ' = ' + parseInt(value);
-			    }
+			    } else // no leafs in the folder
+				throw 'item.generateBSNRConstraint() for folder not yet implemented';
 			},
 
 			generatePZNConstraint: function(catalogue, value) {
@@ -1067,11 +1065,10 @@ i2b2.ExportSQL.getStatementObj = function() {
 			generateAGSConstraint: function(catalogue, value) {
 			    if (value == catalogue) // toplevel
 				return this.dimdiColumn + ' IS NOT NULL';
-			    else if (this.icon.match(/F|D/)) { // folder
+			    else { // folder or leaf
 				return this.dimdiColumn + '::Text'
 				    + " LIKE '" + parseInt(value) + "%'";
-			    } else // leaf
-				return this.dimdiColumn + ' = ' + parseInt(value);
+			    }
 			},
 
 			generateICD10GMConstraint: function(catalogue, value) {
