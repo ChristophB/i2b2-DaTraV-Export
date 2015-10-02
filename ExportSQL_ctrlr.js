@@ -1059,10 +1059,9 @@ i2b2.ExportSQL.getStatementObj = function() {
 			generatePZNConstraint: function(catalogue, value) {
 			    if (value == catalogue) // toplevel
 				return this.dimdiColumn + ' IS NOT NULL';
-			    else if (this.icon.match(/F|D/)) { // folder
-				throw 'item.generatePZNConstraint() for folder not yet implemented';
-			    } else // leaf
+			    else // leaf
 				return this.dimdiColumn + ' = ' + parseInt(value);
+			    /* no special handlings for folders needed, because they are non-selectable containers */
 			},
 
 			generateAGSConstraint: function(catalogue, value) {
@@ -1078,24 +1077,21 @@ i2b2.ExportSQL.getStatementObj = function() {
 			generateICD10GMConstraint: function(catalogue, value) {
 			    if (value == catalogue) // toplevel
 				return this.dimdiColumn + ' IS NOT NULL';
-			    else if (this.icon.match(/F|D/)) { // folder
-				if (!value.match(/\d/)) { // upper class without codes
-				    return this.dimdiColumn + ' IN (SELECT CODE '
-					+ 'FROM ' + i2b2.ExportSQL.model.tablespace + '.ICDCODES ' 
-					+ "WHERE KAPNR = '" + value + "')";
-				} else if (value.match(/-/)) { // range of codes
-				    var codes      = value.split('-');
-				    var initial    = value.substring(0, 1);
-				    var start      = parseInt(codes[0].substring(1, 3));
-				    var end        = parseInt(codes[1].substring(1, 3));
+			    else if (!value.match(/\d/)) { // upper class without codes
+				return this.dimdiColumn + ' IN (SELECT CODE '
+				    + 'FROM ' + i2b2.ExportSQL.model.tablespace + '.ICDCODES ' 
+				    + "WHERE KAPNR = '" + value + "')";
+			    } else if (value.match(/-/)) { // range of codes
+				var codes      = value.split('-');
+				var initial    = value.substring(0, 1);
+				var start      = parseInt(codes[0].substring(1, 3));
+				var end        = parseInt(codes[1].substring(1, 3));
 
-				    return this.dimdiColumn + " LIKE '" + initial + "%' "
-					+ 'AND TO_NUMBER(SUBSTR(' + this.dimdiColumn + ', 2, 2)) BETWEEN ' + start + ' AND ' + end; 
-				} else { // single code group with decimal places
-				    return this.dimdiColumn + " LIKE '" + value + "%'";
-				}
-			    } else // leaf
+				return this.dimdiColumn + " LIKE '" + initial + "%' "
+				    + 'AND TO_NUMBER(SUBSTR(' + this.dimdiColumn + ', 2, 2)) BETWEEN ' + start + ' AND ' + end; 
+			    } else { // single code group with decimal places or leaf
 				return this.dimdiColumn + " LIKE '" + value + "%'"; // % because of optional special characters
+			    }
 			},
 
 			/**
