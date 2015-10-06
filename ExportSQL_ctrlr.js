@@ -1198,7 +1198,7 @@ i2b2.ExportSQL.newStatementObj = function() {
 				    ).map(
 					function(x) { return parseInt(x) }
 				    ).join(', ') + ')';
-			    } else if (value.math(/^\d*$/)) { // leaf
+			    } else if (value.match(/^\d*$/)) { // leaf
 				return this.dimdiColumn + ' = ' + parseInt(value);
 			    } else // no leafs in the folder
 				throw 'item.generateBSNRConstraint() for folder not yet implemented';
