@@ -700,9 +700,10 @@ i2b2.ExportSQL.processItems = function() {
 	+       (berichtsjahrCase == '' ? '' : spaces + berichtsjahrCase + ',<br>')
 	+       (psid2Case == '' ? '' : spaces + psid2Case + ',<br>')
 	+       spaces + items.join(', ') + '<br>'
-	+ 'FROM ' + statement.getTablesStringLatestGroup() + '<br>'
-	+ 'WHERE ' + i2b2.ExportSQL.generateCaseString(satzarten, new Array('PSID', 'PSID2')) 
-	+       ' IN(<br>' + Array(7).join('&nbsp;') + 'SELECT psid FROM ' + tablespace + '.rs WHERE psid IS NOT NULL)<br>'
+	+ 'FROM ' + tablespace + '.rs<br>'
+	+ Array(6).join('&nbsp;') + 'LEFT JOIN<br>'
+	+ Array(6).join('&nbsp;') + statement.getTablesStringLatestGroup() + '<br>'
+	+ Array(6).join('&nbsp;') + 'ON (psid = ' + i2b2.ExportSQL.generateCaseString(satzarten, new Array('PSID', 'PSID2')) + ')'
 	+ 'ORDER BY 1, 2, 3;';
 };
 
