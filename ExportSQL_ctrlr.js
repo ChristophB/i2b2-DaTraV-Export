@@ -226,21 +226,18 @@ i2b2.ExportSQL.getResults = function() {
 	return;
     }
     
-    try {
+    //try {
 	var qm_id      = i2b2.ExportSQL.model.qm.sdxInfo.sdxKeyValue;
 	var result     = i2b2.ExportSQL.processQM(qm_id);
-        var tempTables = i2b2.ExportSQL.uniqueElements(
-	    result[0].match(/grp_g\d+ |grp_g_sameins /g)
-	);
 
-	result[0] += i2b2.ExportSQL.processItems(tempTables);
+	result[0] += i2b2.ExportSQL.processItems();
 
 	document.getElementById('ExportSQL-StatementBox').innerHTML = 
 	    '<pre>' + result[0] + '</pre>';
 	document.getElementById('results').style.display = 'block';
-    } catch (e) {
-    	alert(e);
-    }
+    //} catch (e) {
+    //	alert(e);
+    //}
 
     i2b2.ExportSQL.model.dirtyResultsData = false;
 };
@@ -675,8 +672,7 @@ i2b2.ExportSQL.generateCaseString = function(satzarten, sufix, alias, outerAlias
  *
  * @return {string} select statement
  */
-i2b2.ExportSQL.processItems = function(tempTables) {
-    var inConstraint       = i2b2.ExportSQL.generateInConstraintForTables(tempTables);
+i2b2.ExportSQL.processItems = function() {
     var items              = i2b2.ExportSQL.model.concepts.map(function(x) { return x.dimdiColumn; });
     var tablespace         = i2b2.ExportSQL.model.tablespace;
     var statement          = i2b2.ExportSQL.newStatementObj();
@@ -711,19 +707,13 @@ i2b2.ExportSQL.processItems = function(tempTables) {
 };
 
 /**
- * returns an intersection of all tables (included in the given array) as string
+ * converts a number into a string and adds up to two leading zeroes
  *
- * @param {Object} array with the tables
- *
- * @return {string} intersection of the tables
+ * @param {string} num
+ * @param {integer} size - size of the resulting string
+ * 
+ * @return {string} converted number
  */
-i2b2.ExportSQL.generateInConstraintForTables = function(tables) {
-    if (!tables) throw 'generateInConstraintForTables(): tables is null';
-    return tables.map(
-	function(x) { return 'SELECT psid FROM ' + i2b2.ExportSQL.model.tablespace + '.' + x; }
-    ).join('<br>INTERSECT<br>');
-};
-
 i2b2.ExportSQL.addLeadingZeros = function(num, size) {
     var string = '00' + num;
     return string.substr(string.length - size);
@@ -1365,7 +1355,7 @@ i2b2.ExportSQL.newStatementObj = function() {
 		    this.addTableForColumn(dimdiColumn);
  	    	}
  	    };
-	    
+	    if (exclude == 1) itemGroup.addTableForColumn('SA151');
  	    this.itemGroups.push(itemGroup);
  	}
     };
