@@ -495,8 +495,10 @@ i2b2.ExportSQL.processQMXML = function(queryDef, outerPanelNumber, outerExclude)
 	    panelNumber = eventId + '_' + panelNumber;
 	if (outerPanelNumber)
 	    panelNumber = outerPanelNumber + '_' + panelNumber;
-	if (outerExclude == 1 && panelExclude == 1)
+	if (outerExclude == 1 && panelExclude == 1) {
 	    panelExclude = 0;
+	} else if (outerExclude == 1 && panelExclude == 0)
+	    panelExclude = 1;
 
 	statement.addItemGroup(
 	    panelNumber, panelExclude, panelTiming, panelOccurences, 
