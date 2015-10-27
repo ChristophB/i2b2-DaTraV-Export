@@ -271,11 +271,10 @@ i2b2.ExportSQL.uniqueElements = function(array) {
  *
  * @param {integer} qm_id - ID of a querymaster
  * @param {string} outerPanelNumber - panelNumber of a panel, in which the query is embedded
- * @param {integer} outerExclude - 1 if the outer panel has "exclude" selected
  *
  * @return {Object[]} array with 0: generated SQL and 1: XML-message of the QM
  */
-i2b2.ExportSQL.processQM = function(qm_id, outerPanelNumber, outerExclude) {
+i2b2.ExportSQL.processQM = function(qm_id, outerPanelNumber) {
     var tablespace = i2b2.ExportSQL.model.tablespace;
     var msg_vals   = { qm_key_value: qm_id };
     var results    = i2b2.CRC.ajax.getRequestXml_fromQueryMasterId('Plugin:ExportSQL', msg_vals);
@@ -287,7 +286,7 @@ i2b2.ExportSQL.processQM = function(qm_id, outerPanelNumber, outerExclude) {
     }
 
     /*** Population Query ***/
-    xmlResults.push(i2b2.ExportSQL.processQMXML(queryDef[0], outerPanelNumber, outerExclude));
+    xmlResults.push(i2b2.ExportSQL.processQMXML(queryDef[0], outerPanelNumber));
 
 
     /*** Event Queries ***/
@@ -295,7 +294,7 @@ i2b2.ExportSQL.processQM = function(qm_id, outerPanelNumber, outerExclude) {
     var eventConstraints = i2b2.h.XPath(queryDef[0], 'descendant::subquery_constraint');
 
     for (var i = 0; i < events.length; i++) {
-    	xmlResults.push(i2b2.ExportSQL.processQMXML(events[i], outerPanelNumber, outerExclude));
+    	xmlResults.push(i2b2.ExportSQL.processQMXML(events[i], outerPanelNumber));
     }
 
 
@@ -450,11 +449,10 @@ i2b2.ExportSQL.newResultObj = function(statement, panelResultTables, subQuerySql
  *
  * @param {Object} queryDef - to process xml document
  * @param {string} outerPanelNumber - outer queries panel number, where the sub query is placed (optional)
- * @param {integer} outerExclude - outer queries exclude value (optional)
  *
  * @return {Object} result 
  */
-i2b2.ExportSQL.processQMXML = function(queryDef, outerPanelNumber, outerExclude) {
+i2b2.ExportSQL.processQMXML = function(queryDef, outerPanelNumber) {
     var tablespace  = i2b2.ExportSQL.model.tablespace;
     var statement   = i2b2.ExportSQL.newStatementObj();
     var timing      = i2b2.h.getXNodeVal(queryDef, 'query_timing');
@@ -495,10 +493,6 @@ i2b2.ExportSQL.processQMXML = function(queryDef, outerPanelNumber, outerExclude)
 	    panelNumber = eventId + '_' + panelNumber;
 	if (outerPanelNumber)
 	    panelNumber = outerPanelNumber + '_' + panelNumber;
-	if (outerExclude == 1 && panelExclude == 1) {
-	    panelExclude = 0;
-	} else if (outerExclude == 1 && panelExclude == 0)
-	    panelExclude = 1;
 
 	statement.addItemGroup(
 	    panelNumber, panelExclude, panelTiming, panelOccurences, 
@@ -883,9 +877,9 @@ i2b2.ExportSQL.newStatementObj = function() {
 	 *
 	 * @param {integer} number - number of the group
 	 * @param {integer} exclude - 1 if the group is negated
-	 * @param {string} timing - 
+	 * @param {string} timing - ANY, SAMEVIST or SAMEINSTANCE
 	 * @param {integer} occurences - least number of times a constraint has to be true
-	 * @param {integer} accuracy - 
+	 * @param {integer} accuracy - not used in i2b2
 	 * @param {Object} dateFrom - start date for observation
 	 * @param {Object} dateTo - end date for obserfation
 	 */
