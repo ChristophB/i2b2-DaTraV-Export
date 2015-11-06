@@ -684,14 +684,14 @@ i2b2.ExportSQL.processItems = function() {
     }
     satzarten = i2b2.ExportSQL.uniqueElements(satzarten);
 
-    var psidCase           = i2b2.ExportSQL.generateCaseString(satzarten, new Array('PSID', 'PSID2'), 'psid');
+    // var psidCase           = i2b2.ExportSQL.generateCaseString(satzarten, new Array('PSID', 'PSID2'), 'psid');
     var ausgleichsjahrCase = i2b2.ExportSQL.generateCaseString(satzarten, new Array('AUSGLEICHSJAHR'), 'ausgleichsjahr');
     var berichtsjahrCase   = i2b2.ExportSQL.generateCaseString(satzarten, new Array('BERICHTSJAHR'), 'berichtsjahr');
     var psid2Case          = i2b2.ExportSQL.generateCaseString(satzarten, new Array('PSID2'), 'psid2');
     var spaces             = Array(8).join('&nbsp;');
     
     return '/*** Final Select ***/<br>'
-	+ 'SELECT ' + psidCase + ',<br>' 
+	+ 'SELECT psid,<br>' 
 	+       spaces + ausgleichsjahrCase + ',<br>'
 	+       (berichtsjahrCase == '' ? '' : spaces + berichtsjahrCase + ',<br>')
 	+       (psid2Case == '' ? '' : spaces + psid2Case + ',<br>')
