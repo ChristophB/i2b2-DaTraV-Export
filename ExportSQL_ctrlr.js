@@ -21,8 +21,9 @@ i2b2.ExportSQL.Init = function(loadedDiv) {
 	counter++;
     }
 
-    i2b2.ExportSQL.model.tablespace = 'DATRAVEXAMPLE';
-    i2b2.ExportSQL.model.concepts   = [];
+    i2b2.ExportSQL.model.tablespace        = 'DATRAVEXAMPLE';
+    i2b2.ExportSQL.model.concepts          = [];
+    i2b2.ExportSQL.model.multiResultTables = false;
 
     i2b2.sdx.Master.AttachType(qmDivName, 'QM', op_trgt);
     i2b2.sdx.Master.AttachType(conceptDivName, 'CONCPT', op_trgt);
@@ -70,6 +71,18 @@ i2b2.ExportSQL.setYear = function() {
     i2b2.ExportSQL.model.fromYear = fromYear;
     i2b2.ExportSQL.model.toYear   = toYear;
 
+    i2b2.ExportSQL.checkModel();
+};
+
+/**
+ * updates the models value of multiResultTables
+ * if the value is true, the generated SQL-statement creates a table for each
+ * required Satzart to prevent redundant data collection
+ */
+i2b2.ExportSQL.setmultiResultTable = function() {
+    var checked = document.getElementById('multiResultTable').checked;
+    
+    i2b2.ExportSQL.model.multiResultTables = checked;
     i2b2.ExportSQL.checkModel();
 };
 
@@ -300,7 +313,7 @@ i2b2.ExportSQL.processQM = function(qm_id, outerPanelNumber) {
 
     /*** Output ***/
     var sql = outerPanelNumber ? '/*** Sub Query ' + outerPanelNumber + ' ***/<br>' : '';
-    var resultTableName = tablespace + '.rs' + (outerPanelNumber ? '_' + outerPanelNumber : '');
+    var resultTableName = tablespace + '.pat' + (outerPanelNumber ? '_' + outerPanelNumber : '');
     for (var i = 0; i < xmlResults.length; i++) {
 	var statement         = xmlResults[i].statement;
 	var panelResultTables = xmlResults[i].panelResultTables;
@@ -334,7 +347,7 @@ i2b2.ExportSQL.processQM = function(qm_id, outerPanelNumber) {
 		if (diffVisitTables.length == 1) {
 		    diffVisitSql += 'SELECT psid, ausgleichsjahr FROM ' + diffVisitTables[0];
 		} else {
-		    diffVisitSql += 'SELECT psid, ausgleichsjahr FROM temp_table';
+		    diffVisitSql += 'SELECT psid, ausgleichsjahr FROM ' + tablespace + '.temp_table';
 		}
 
 		if (sameVisitTables.length > 0) {
@@ -353,8 +366,8 @@ i2b2.ExportSQL.processQM = function(qm_id, outerPanelNumber) {
 	    }
 	}
 	if (diffVisitTables.length > 1) { // keep information about Ausgleichsjahr
-	    tempSql = 'DROP TABLE temp_table;<br>'
-		+ 'CREATE TABLE temp_table AS (<br>'
+	    tempSql = 'DROP TABLE ' + tablespace + '.temp_table;<br>'
+		+ 'CREATE TABLE ' + tablespace + '.temp_table AS (<br>'
 		+ 'SELECT psid, ausgleichsjahr<br>'
 		+ 'FROM (<br>' + diffVisitTables.map(
 		    function(x) { return Array(7).join('&nbsp;') + 'SELECT psid, ausgleichsjahr FROM ' + x }
@@ -375,7 +388,7 @@ i2b2.ExportSQL.processQM = function(qm_id, outerPanelNumber) {
 	    + 'DROP TABLE ' + resultTableName + (eventId ? '_' + eventId : '') + ';<br>'
 	    + 'CREATE TABLE ' + resultTableName + (eventId ? '_' + eventId : '') + ' AS (<br>'
 	    + createSql + '<br>);<br><br>'
-	    + 'DROP TABLE temp_table;<br><br>';
+	    + 'DROP TABLE ' + tablespace + '.temp_table;<br><br>';
     }
 
     /*** Event Handling ***/
@@ -530,7 +543,7 @@ i2b2.ExportSQL.processQMXML = function(queryDef, outerPanelNumber) {
 		    , panelExclude
 		)[0];
 
-		statement.addSubQueryTable(tablespace + '.rs_' + panelNumber + '_q' + subQueryCounter);
+		statement.addSubQueryTable(tablespace + '.pat_' + panelNumber + '_q' + subQueryCounter);
 		subQueryCounter++;
 		continue;
 	    }
@@ -668,14 +681,26 @@ i2b2.ExportSQL.generateCaseString = function(satzarten, sufix, alias, outerAlias
 };
 
 /**
- * creates the final SELECT statement
+ * creates the final CREATE TABLE statement(s)
  *
- * @param {Object} tempTables - array of all created temporary tables
- * @param {Object} items - array of all selected items, by user
- *
- * @return {string} select statement
+ * @return {string} CREATE TABLE statement(s)
  */
 i2b2.ExportSQL.processItems = function() {
+    if (i2b2.ExportSQL.model.multiResultTables) {
+	return i2b2.ExportSQL.processItemsMultiResultTables();
+    } else {
+	return i2b2.ExportSQL.processItemsSingleResultTable();
+    }
+}
+
+/**
+ * Creates one CREATE TABLE statement where multiple Satzarten are included.
+ * The problem here is that a FULL JOIN is used to link all the required Satzart tables,
+ * so the resulting table potentially contails m*n tuple
+ *
+ * @return {string} single CREATE TABLE statement
+ */
+i2b2.ExportSQL.processItemsSingleResultTable = function() {
     var items              = i2b2.ExportSQL.model.concepts.map(function(x) { return x.dimdiColumn; });
     var tablespace         = i2b2.ExportSQL.model.tablespace;
     var statement          = i2b2.ExportSQL.newStatementObj();
@@ -691,13 +716,14 @@ i2b2.ExportSQL.processItems = function() {
     }
     satzarten = i2b2.ExportSQL.uniqueElements(satzarten);
 
-    // var psidCase           = i2b2.ExportSQL.generateCaseString(satzarten, new Array('PSID', 'PSID2'), 'psid');
     var ausgleichsjahrCase = i2b2.ExportSQL.generateCaseString(satzarten, new Array('AUSGLEICHSJAHR'), 'ausgleichsjahr');
     var berichtsjahrCase   = i2b2.ExportSQL.generateCaseString(satzarten, new Array('BERICHTSJAHR'), 'berichtsjahr');
     var psid2Case          = i2b2.ExportSQL.generateCaseString(satzarten, new Array('PSID2'), 'psid2');
     var spaces             = Array(8).join('&nbsp;');
     
-    return '/*** Final Select ***/<br>'
+    return '/*** Result Table ***/<br>'
+	+ 'DROP TABLE result;<br>'
+	+ 'CREATE TABLE result AS ('
 	+ 'SELECT psid,<br>' 
 	+       spaces + ausgleichsjahrCase + ',<br>'
 	+       (berichtsjahrCase == '' ? '' : spaces + berichtsjahrCase + ',<br>')
@@ -706,9 +732,59 @@ i2b2.ExportSQL.processItems = function() {
 	+ 'FROM ' + tablespace + '.rs<br>'
 	+ Array(6).join('&nbsp;') + 'LEFT JOIN<br>'
 	+ Array(6).join('&nbsp;') + statement.getTablesStringLatestGroup() + '<br>'
-	+ Array(6).join('&nbsp;') + 'ON (psid = ' + i2b2.ExportSQL.generateCaseString(satzarten, new Array('PSID', 'PSID2')) + ')'
-	+ 'ORDER BY 1, 2, 3;';
+	+ Array(6).join('&nbsp;') + 'ON (psid = ' + i2b2.ExportSQL.generateCaseString(satzarten, new Array('PSID', 'PSID2')) + ')' + '<br>'
+	+ ');';
 };
+
+/**
+ * Creates multiple CREATE TABLE statements, depending on the selected items and there origin.
+ *
+ * @return {string} multiple CREATE TABLE statements, one per Satzart
+ */
+i2b2.ExportSQL.processItemsMultiResultTables = function() {
+    // throw 'not implemented';
+
+    var items              = i2b2.ExportSQL.model.concepts.map(function(x) { return x.dimdiColumn; });
+    var tablespace         = i2b2.ExportSQL.model.tablespace;
+    var fromDate           = i2b2.ExportSQL.extractDate(i2b2.ExportSQL.model.fromYear);
+    var toDate             = i2b2.ExportSQL.extractDate(i2b2.ExportSQL.model.toYear);
+    var satzarten          = [];
+    var sql                = '';
+    var spaces             = Array(8).join('&nbsp;');
+
+    for (var i = 0; i < items.length; i++) {
+	satzarten.push(items[i].replace(/(SA\d\d\d)(.*)/, '$1'));
+    }
+    satzarten = i2b2.ExportSQL.uniqueElements(satzarten);
+    satzarten.sort();
+
+    for (var i = 0; i < satzarten.length; i++) {
+	var cur_satzart = satzarten[i];
+	var statement   = i2b2.ExportSQL.newStatementObj();
+	var cur_items   = items.filter(
+	    function(x) { if (x.match(cur_satzart)) return x; }
+	);
+
+	statement.addItemGroup(1, 0, 'ANY', 1, 1, fromDate, toDate);
+	statement.addItem(cur_items[0], 'LA');
+
+	sql += '/*** Result table for Satzart ' + cur_satzart + ' ***/<br>'
+	    + 'DROP TABLE result_' + cur_satzart + ';<br>'
+	    + 'CREATE TABLE result_' + cur_satzart + ' AS (<br>'
+	    + 'SELECT psid<br>'
+	    + spaces + ', ' + cur_satzart + '_AUSGLEICHSJAHR<br>'
+	    + (!cur_satzart.match(/951/) ? spaces + ', ' + cur_satzart + '_BERICHTSJAHR<br>' : '')
+	    + (!cur_satzart.match(/999/) ? spaces + ', ' + cur_satzart + '_PSID2<br>' : '')
+	    + spaces + ', ' + cur_items.join('<br>' + spaces + ', ') + '<br>'
+	    + 'FROM ' + tablespace + '.pat<br>'
+	    + Array(6).join('&nbsp;') + 'LEFT JOIN<br>'
+	    + Array(6).join('&nbsp;') + statement.getTablesStringLatestGroup() + '<br>'
+	    + Array(6).join('&nbsp;') + 'ON (psid = ' + i2b2.ExportSQL.generateCaseString(new Array(cur_satzart), new Array('PSID', 'PSID2')) + ')<br>'
+	    + ');<br><br>';
+    }
+
+    return sql;
+}
 
 /**
  * converts a number into a string and adds up to two leading zeroes
