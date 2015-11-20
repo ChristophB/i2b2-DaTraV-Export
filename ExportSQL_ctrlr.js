@@ -1458,7 +1458,10 @@ i2b2.ExportSQL.newStatementObj = function() {
 		    this.addTableForColumn(dimdiColumn);
  	    	}
  	    };
-	    if (exclude == 1) itemGroup.addTableForColumn('SA151');
+	    if (exclude == 1) { // add SA151 and SA152 to find patients with missing entries
+		itemGroup.addTableForColumn('SA151');
+		itemGroup.addTableForColumn('SA152');
+	    }
  	    this.itemGroups.push(itemGroup);
  	}
     };
