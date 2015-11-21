@@ -28,8 +28,14 @@ i2b2.ExportSQL.Init = function(loadedDiv) {
     i2b2.sdx.Master.AttachType(qmDivName, 'QM', op_trgt);
     i2b2.sdx.Master.AttachType(conceptDivName, 'CONCPT', op_trgt);
 
-    i2b2.sdx.Master.setHandlerCustom(qmDivName, 'QM', 'DropHandler', function(sdxData) { i2b2.ExportSQL.doDrop(sdxData); });
-    i2b2.sdx.Master.setHandlerCustom(conceptDivName, 'CONCPT', 'DropHandler', function(sdxData) { i2b2.ExportSQL.doDropConcept(sdxData); });
+    i2b2.sdx.Master.setHandlerCustom(
+	qmDivName, 'QM', 'DropHandler'
+	, function(sdxData) { i2b2.ExportSQL.doDrop(sdxData); }
+    );
+    i2b2.sdx.Master.setHandlerCustom(
+	conceptDivName, 'CONCPT', 'DropHandler'
+	, function(sdxData) { i2b2.ExportSQL.doDropConcept(sdxData); }
+    );
 
     i2b2.ExportSQL.redrawMessagePanel();
 
@@ -59,7 +65,7 @@ i2b2.ExportSQL.reset = function() {
 
 /**
  * this function is called after modifying a year value in the plugins view
- * the set or modifyied year will get added to the model data
+ * the set or modifyied year gets added to the model data
  */
 i2b2.ExportSQL.setYear = function() {
     var fromYear = document.getElementById('fromYear');
@@ -142,7 +148,7 @@ i2b2.ExportSQL.checkModel = function() {
 };
 
 /** 
- * handles drop concepts 
+ * handles droped concepts 
  * 
  * @param {Object[]} sdxData - droped sdx object
  */
@@ -156,6 +162,7 @@ i2b2.ExportSQL.doDropConcept = function(sdxData) {
 	return;
     i2b2.ExportSQL.model.concepts.push(concept);
     
+    /* check for duplicated concepts and remove them */
     var temp = [];
     for (i = 0; i < i2b2.ExportSQL.model.concepts.length; i++) {
 	if (temp.indexOf(i2b2.ExportSQL.model.concepts[i].dimdiColumn) != -1)
@@ -180,15 +187,19 @@ i2b2.ExportSQL.removeItem = function(dimdiColumn) {
 	    concepts.push(concept);
     }
     i2b2.ExportSQL.model.concepts = concepts;
-    i2b2.ExportSQL.redrawConceptDiv();
 
+    i2b2.ExportSQL.redrawConceptDiv();
     i2b2.ExportSQL.checkModel();
 };
 
+/**
+ * the function is called if a concept is added or removed,
+ * adds a clickable span for each concept
+ */
 i2b2.ExportSQL.redrawConceptDiv = function() {    
     var icon      = 'sdx_ONT_CONCPT_leaf.gif'; // 'sdx_ONT_CONCPT_branch-exp.gif';
     var innerHTML = i2b2.ExportSQL.model.concepts.map(
-	function(x) { 
+	function(x) {
 	    return '<span class="dropedItem" onclick="i2b2.ExportSQL.removeItem(\'' + x.dimdiColumn + '\')" title="' + x.dimdiColumn + '">'
 		+ '<img src="js-i2b2/cells/ONT/assets/' + icon + '">'
 		+ '&nbsp;&nbsp;' + x.displayName
@@ -201,6 +212,10 @@ i2b2.ExportSQL.redrawConceptDiv = function() {
     $('ExportSQL-IDROP').innerHTML = innerHTML;
 };
 
+/**
+ * copies the resulting sql to clipboard
+ * if an error occurs, the sql gets marked so the user can copy it manually
+ */
 i2b2.ExportSQL.copyToClipboard = function() {
     var div = document.getElementById('ExportSQL-StatementBox');
 
@@ -225,15 +240,21 @@ i2b2.ExportSQL.copyToClipboard = function() {
     }
 };
 
+/**
+ * removes the text selection from the sql, if there is any
+ */
 i2b2.ExportSQL.clearSelection = function() {
-    if ( document.selection ) {
+    if (document.selection) {
         document.selection.empty();
-    } else if ( window.getSelection ) {
+    } else if (window.getSelection) {
         window.getSelection().removeAllRanges();
     }
 };
 
-/* refreshs the display with info of the SDX record that was DragDropped */
+/**
+ * starts the generation of the sql statement
+ * and displays it on the web page
+ */
 i2b2.ExportSQL.getResults = function() {
     if (!i2b2.ExportSQL.model.dirtyResultsData) {
 	return;
@@ -279,7 +300,7 @@ i2b2.ExportSQL.uniqueElements = function(array) {
 };
 
 /**
- * generates "create temporary table" statements for a given QM-ID
+ * generates "create table" statements for a given QM-ID
  * this function is called recursively, if the specified query contains subqueries
  *
  * @param {integer} qm_id - ID of a querymaster
@@ -458,7 +479,7 @@ i2b2.ExportSQL.newResultObj = function(statement, panelResultTables, subQuerySql
 };
 
 /**
- * returns an object, which stores information to results of a processed qery master xml document
+ * returns an object, which stores information to results of a processed query master xml document
  *
  * @param {Object} queryDef - to process xml document
  * @param {string} outerPanelNumber - outer queries panel number, where the sub query is placed (optional)
@@ -479,7 +500,7 @@ i2b2.ExportSQL.processQMXML = function(queryDef, outerPanelNumber) {
     if (queryType && queryType == 'EVENT')
 	eventId = i2b2.h.getXNodeVal(queryDef, 'query_id').replace('Event ', 'e');
     
-    for (var pnr = 0; pnr < panels.length; pnr++) {
+    for (var pnr = 0; pnr < panels.length; pnr++) { // iterate panels
 	var panel              = panels[pnr];
 	var panelNumber        = 'g' + i2b2.h.getXNodeVal(panel, 'panel_number');
 	var panelExclude       = i2b2.h.getXNodeVal(panel, 'invert');
@@ -512,7 +533,7 @@ i2b2.ExportSQL.processQMXML = function(queryDef, outerPanelNumber) {
 	    panelAccuracy, panelDateFrom, panelDateTo
 	);
 
-	for (var itemNum = 0; itemNum < panelItems.length; itemNum++) {
+	for (var itemNum = 0; itemNum < panelItems.length; itemNum++) { // iterate items
 	    var item       = panelItems[itemNum];
 	    var item_key   = i2b2.h.getXNodeVal(item, 'item_key');
 	    var item_icon  = i2b2.h.getXNodeVal(item, 'item_icon');
@@ -534,7 +555,7 @@ i2b2.ExportSQL.processQMXML = function(queryDef, outerPanelNumber) {
 		value    = i2b2.h.getXNodeVal(constraint[0], 'value_constraint');
 	    }
 	    
-	    /*** item is querymaster ***/
+	    /*** item is a querymaster ***/
 	    if (item_key.match(/masterid:/)) {
 		var masterid = item_key.replace('masterid:', '');
 		subQuerySql += i2b2.ExportSQL.processQM(
@@ -596,7 +617,7 @@ i2b2.ExportSQL.extractDate = function(string) {
 
 /**
  * transformes an array of table expressions to a string
- * joins are realised as FULL (OUTER) JOIN
+ * joins are realized as FULL (OUTER) JOIN
  *
  * @param {Object} array - array of table expressions
  *
@@ -611,7 +632,7 @@ i2b2.ExportSQL.tableArrayToString = function(array) {
     for (var i = 0; i < array.length; i++) {
 	var curSatzart = String(array[i]).replace(/(.*?)(SA\d\d\d)(.*)/, '$2');
 	
-	if (i > 0) {
+	if (i > 0) { // not the first element of the array
 	    sql += '<br>' + spaces + 'FULL JOIN<br>' 
 		+ spaces +  array[i] + '<br>'
 		+ spaces + 'ON (' + i2b2.ExportSQL.generateCaseString(satzarten, new Array('PSID', 'PSID2')) 
@@ -624,9 +645,10 @@ i2b2.ExportSQL.tableArrayToString = function(array) {
 		  )
 		+ i2b2.ExportSQL.generateCaseString(satzarten, new Array('AUSGLEICHSJAHR')) + ' = ' + curSatzart + '_AUSGLEICHSJAHR'
 		+ ')';
-	} else {
+	} else { // first element
 	    sql += array[i];
 	}
+
 	prevSatzart = curSatzart;
 	satzarten.push(curSatzart);
     }
@@ -676,6 +698,7 @@ i2b2.ExportSQL.generateCaseString = function(satzarten, sufix, alias, outerAlias
 		+ outerAlias + satzarten[i] + '_' + sufix[o];
 	}
     }
+
     if (sql == '') return '';
     return 'CASE' + sql + ' ELSE NULL END' + alias;
 };
@@ -742,8 +765,6 @@ i2b2.ExportSQL.processItemsSingleResultTable = function() {
  * @return {string} multiple CREATE TABLE statements, one per Satzart
  */
 i2b2.ExportSQL.processItemsMultiResultTables = function() {
-    // throw 'not implemented';
-
     var items              = i2b2.ExportSQL.model.concepts.map(function(x) { return x.dimdiColumn; });
     var tablespace         = i2b2.ExportSQL.model.tablespace;
     var fromDate           = i2b2.ExportSQL.extractDate(i2b2.ExportSQL.model.fromYear);
@@ -752,12 +773,14 @@ i2b2.ExportSQL.processItemsMultiResultTables = function() {
     var sql                = '';
     var spaces             = Array(8).join('&nbsp;');
 
+    /*** collect required satzarten ***/
     for (var i = 0; i < items.length; i++) {
 	satzarten.push(items[i].replace(/(SA\d\d\d)(.*)/, '$1'));
     }
     satzarten = i2b2.ExportSQL.uniqueElements(satzarten);
     satzarten.sort();
 
+    /*** process satzarten ***/
     for (var i = 0; i < satzarten.length; i++) {
 	var cur_satzart = satzarten[i];
 	var statement   = i2b2.ExportSQL.newStatementObj();
@@ -837,6 +860,17 @@ i2b2.ExportSQL.newStatementObj = function() {
 	    );
 	},
 
+	/**
+	 * returns the itemGroup of itemGroups array with the highest index
+	 *
+	 * @return {Object} itemGroup
+	 */ 
+	getLatestItemGroup: function() {
+	    if (this.itemGroups.length == 0)
+		return null;
+	    return this.itemGroups[this.itemGroups.length - 1];
+	},
+
  	/**
 	 * adds an item to the currently newest item group
 	 * 
@@ -860,17 +894,6 @@ i2b2.ExportSQL.newStatementObj = function() {
 	    this.getLatestItemGroup().addSubQueryTable(tablename);
 	},
 
-	/**
-	 * returns the itemGroup of itemGroups array with the highest index
-	 *
-	 * @return {Object} itemGroup
-	 */ 
-	getLatestItemGroup: function() {
-	    if (this.itemGroups.length == 0)
-		return null;
-	    return this.itemGroups[this.itemGroups.length - 1];
-	},
-
  	/**
 	 * adds a table expression to tables array, if not already added 
 	 *
@@ -891,6 +914,7 @@ i2b2.ExportSQL.newStatementObj = function() {
 	    var satzarten      = [];
 	    var fromYear, toYear;
 
+	    /*** collect all itemgroups with type SAMEINSTANCENUM ***/
 	    for (var i = 0; i < this.itemGroups.length; i++) {
 		var itemGroup = this.itemGroups[i];
 		if (itemGroup.getTiming() != 'SAMEINSTANCENUM')
@@ -908,7 +932,6 @@ i2b2.ExportSQL.newStatementObj = function() {
 		if (!toYear || toYear > itemGroup.getToYear())
 		    toYear = itemGroup.getToYear();
 	    }
-
 	    if (relevantGroups.length == 0) return;
 
 	    /*** generate tablename ***/
@@ -917,7 +940,7 @@ i2b2.ExportSQL.newStatementObj = function() {
 		+ relevantGroups[0].getTempTableName().replace(/\d*$/, '')
 		+ '_sameins';
 
-	    /*** generate from clause ***/
+	    /*** generate from clauses ***/
 	    var fromDate = {};
 	    var toDate   = {};
 	    var tables   = [];
@@ -1044,7 +1067,7 @@ i2b2.ExportSQL.newStatementObj = function() {
 		    if (this.tables.length == 0 && this.subQueryTables.length == 0)
 			throw 'itemGroup.toString(): no data for the group available';
 		    
-		    if (this.items.length == 0 && this.subQueryTables.length > 0) {
+		    if (this.items.length == 0 && this.subQueryTables.length > 0) { // itemgroup contains only one subquery
 			var inConstraint = this.subQueryTables.map(
 			    function(x) { return 'SELECT psid FROM ' + x; }
 			).join('<br>UNION<br>');
@@ -1281,6 +1304,8 @@ i2b2.ExportSQL.newStatementObj = function() {
 			alias      : alias,
 			icon       : icon,
 
+			/*********************************************/
+			/*** specific functions for each catalogue ***/
 			generateBSNRConstraint: function(catalogue, value) {
 			    if (value == catalogue) // toplevel
 				return this.dimdiColumn + ' IS NOT NULL';
@@ -1333,6 +1358,7 @@ i2b2.ExportSQL.newStatementObj = function() {
 				return this.dimdiColumn + " LIKE '" + value + "%'"; // % because of optional special characters
 			    }
 			},
+			/*******************************************/
 
 			/**
 			 * ### declare new catalogue functions here ###
