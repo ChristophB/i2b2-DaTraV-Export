@@ -746,8 +746,8 @@ i2b2.DaTraVExport.processItemsSingleResultTable = function() {
     var indent             = Array(5).join('&nbsp;');
     
     return '/*** Result Table ***/<br>'
-	+ 'DROP TABLE result;<br>'
-	+ 'CREATE TABLE result AS ('
+	+ 'DROP TABLE ' + tablespace + '.result;<br>'
+	+ 'CREATE TABLE ' + tablespace + '.result AS ('
 	+ 'SELECT psid<br>' 
 	+ indent + ', ' + ausgleichsjahrCase + '<br>'
 	+ (berichtsjahrCase == '' ? '' : indent + ', ' + berichtsjahrCase + '<br>')
