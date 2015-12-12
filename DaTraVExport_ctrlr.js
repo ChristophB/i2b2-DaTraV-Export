@@ -359,9 +359,10 @@ i2b2.DaTraVExport.processQM = function(qm_id, outerPanelNumber) {
 		else diffVisitTables.push(curResultTable);
 	    }
 	    if (sameVisitTables.length > 0) {
-		createSql += '(SELECT psid, berichtsjahr FROM (' + sameVisitTables.map(
-			function(x) { return 'SELECT psid, psid2, berichtsjahr FROM ' + x }
-		    ).join('<br>&nbsp;INTERSECT<br>&nbsp;') + '))';
+		createSql += '(SELECT psid, berichtsjahr FROM (<br>'
+		    + sameVisitTables.map(
+			function(x) { return indent + 'SELECT psid, psid2, berichtsjahr FROM ' + x }
+		    ).join('<br>' + indent + 'INTERSECT<br>') + ')<br>)';
 	    }
 	    if (diffVisitTables.length > 0) {
 		var diffVisitSql = '';
@@ -393,7 +394,7 @@ i2b2.DaTraVExport.processQM = function(qm_id, outerPanelNumber) {
 		+ 'SELECT psid, berichtsjahr<br>'
 		+ 'FROM (<br>' + diffVisitTables.map(
 		    function(x) { return indent + 'SELECT psid, berichtsjahr FROM ' + x }
-		).join('<br>' + indent + indent + 'UNION<br>') + '<br>'
+		).join('<br>' + indent + 'UNION<br>') + '<br>'
 		+ indent + ') q<br>'
 		+ indent + 'JOIN ('
 		+ diffVisitTables.map(
@@ -982,7 +983,7 @@ i2b2.DaTraVExport.newStatementObj = function() {
 	    return 'DROP TABLE ' + tableName + ';<br>'
 		+ 'CREATE TABLE ' + tableName + ' AS (<br>'
 		+ 'SELECT ' + i2b2.DaTraVExport.generateCaseString(satzarten, new Array('PSID', 'PSID2'), 'psid') + '<br>'
-		+ indent + ', ' + i2b2.DaTraVExport.generateCaseString(satzarten, new Array('AUSGLEICHSJAHR'), 'ausgleichsjahr') + '<br>'
+		+ indent + ', ' + i2b2.DaTraVExport.generateCaseString(satzarten, new Array('BERICHTSJAHR'), 'berichtsjahr') + '<br>'
 		+ 'FROM (SELECT * FROM ' + i2b2.DaTraVExport.tableArrayToSQLString(tables) + ') q<br>'
 		+ 'WHERE ' + whereConstraints + '<br>'
 		+ ');';
