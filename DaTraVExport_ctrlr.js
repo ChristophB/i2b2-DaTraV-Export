@@ -664,7 +664,7 @@ i2b2.DaTraVExport.tableArrayToSQLString = function(array) {
  * there are some exceptions for the combination SA999 + PSID2 and SA951 + BERICHTSJAHR
  *
  * @param {Object[]} satzarten - array of Satzarten
- * @param {Object[]} sufix - first element is sufix of normal column, following: columns concatenated with AUSGLEICHSJAHR
+ * @param {Object[]} sufix - first element is sufix of normal column, following: columns concatenated with BERICHTSJAHR
  * @param {string} alias - alias for the CASE expression (optional)
  + @param {string} outerAlias - alias of the outer querys from-tables (optional)
  *
@@ -693,9 +693,10 @@ i2b2.DaTraVExport.generateCaseString = function(satzarten, sufix, alias, outerAl
     for (var o = 0; o < sufix.length; o++) { 
 	for (var i = 0; i < satzarten.length; i++) {
 	    if (sufix[o].match(/PSID2/) && satzarten[i].match(/SA999/)) continue;
-	    if (sufix[o].match(/BERICHSTJAHR/) && satzarten[i].match(/SA951/)) continue;
+	    // changed AUSGLEICHSJAHR to BERICHTSJAHR, so previously selected columns have to contain BERICHTSJAHR
+	    // if (sufix[o].match(/BERICHSTJAHR/) && satzarten[i].match(/SA951/)) continue;
 	    sql += ' WHEN ' + outerAlias + satzarten[i] + '_' + sufix[o] + ' IS NOT NULL THEN '
-		+ (o > 0 ? outerAlias + satzarten[i] + "_AUSGLEICHSJAHR || '_' || " : '')
+		+ (o > 0 ? outerAlias + satzarten[i] + "_BERICHTSJAHR || '_' || " : '')
 		+ outerAlias + satzarten[i] + '_' + sufix[o];
 	}
     }
