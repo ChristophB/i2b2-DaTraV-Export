@@ -1,15 +1,15 @@
 /*** CSS for main plugin wrapper ***/
-DIV#ExportSQL-mainDiv {
+DIV#DaTraVExport-mainDiv {
     padding: 0px;
     height: 100%;
 }
 
 /*** CSS for tab background ***/
 
-DIV#ExportSQL-TABS DIV.yui-content {
+DIV#DaTraVExport-TABS DIV.yui-content {
     background: #FFF;
 }
-DIV#ExportSQL-TABS DIV.ExportSQL-MainContent {
+DIV#DaTraVExport-TABS DIV.DaTraVExport-MainContent {
     background: #FFF;
     border: solid #63758C;
     border-width: 1px 0;
@@ -17,13 +17,13 @@ DIV#ExportSQL-TABS DIV.ExportSQL-MainContent {
     overflow-y: scroll\9;
     height: 100%;
 }
-DIV#ExportSQL-TABS DIV.ExportSQL-MainContentPad {
+DIV#DaTraVExport-TABS DIV.DaTraVExport-MainContentPad {
     padding: 10px 10px;
     position: relative;
 }
 
 /*** CSS for the Generate SQL tab ***/
-DIV#ExportSQL-mainDiv DIV.results-finished {
+DIV#DaTraVExport-mainDiv DIV.results-finished {
     background: #BBCCEE none repeat scroll 0%;
     padding: 5px 5px 5px 5px;
     border: 1px solid #667788;
@@ -32,7 +32,7 @@ DIV#ExportSQL-mainDiv DIV.results-finished {
     width: auto;
     position: relative;
 }
-DIV#ExportSQL-mainDiv DIV.statementBox {
+DIV#DaTraVExport-mainDiv DIV.statementBox {
     text-align: left;
     border: 1px solid #63758C;
     overflow: auto;
@@ -43,17 +43,17 @@ DIV#ExportSQL-mainDiv DIV.statementBox {
     padding: 0px 5px 0px 5px;
     position: relative;
 }
-DIV#ExportSQL-mainDiv DIV.yearSelects {
+DIV#DaTraVExport-mainDiv DIV.yearSelects {
     float: right;
 }
-DIV#ExportSQL-mainDiv DIV.droptrgtlbl {
+DIV#DaTraVExport-mainDiv DIV.droptrgtlbl {
     padding: 6px 0px;
     float: left;
     font-weight:bold;
     color:#666;
     margin: 7px 10px 7px 10px;
 }
-DIV#ExportSQL-mainDiv DIV.droptrgt {
+DIV#DaTraVExport-mainDiv DIV.droptrgt {
     padding: 5px 10px;
     background: #DEEBEF;
     margin: 7px 0px 7px 0px;
@@ -63,7 +63,7 @@ DIV#ExportSQL-mainDiv DIV.droptrgt {
     overflow: hidden; 
     float: left;
 }
-DIV#ExportSQL-mainDiv DIV.generateBox {
+DIV#DaTraVExport-mainDiv DIV.generateBox {
     background: #6677AA;
     border: 1px solid #667788;
     font-weight: bold;
@@ -79,12 +79,12 @@ DIV#ExportSQL-mainDiv DIV.generateBox {
     width: 72px;
     overflow: hidden;
 }
-DIV#ExportSQL-mainDiv DIV.generateBox a {
+DIV#DaTraVExport-mainDiv DIV.generateBox a {
     color: #FFF;
     display: block;
     text-decoration: none;
 }
-DIV#ExportSQL-mainDiv DIV.bar {
+DIV#DaTraVExport-mainDiv DIV.bar {
     background: #CEDBEF none repeat scroll 0%;
     border: 1px solid #667788;
     overflow: hidden;
@@ -94,13 +94,13 @@ DIV#ExportSQL-mainDiv DIV.bar {
     clear: both;
     margin: 5px 0px 5px 0px;
 }
-DIV#ExportSQL-mainDiv select.selectYear {
+DIV#DaTraVExport-mainDiv select.selectYear {
     background: #DEEBEF;
     margin: 12px 20px 0px 0px;
     float: left;
     width: auto;
 }
-DIV#ExportSQL-mainDiv DIV.elementGroup {
+DIV#DaTraVExport-mainDiv DIV.elementGroup {
     background: #BBCCEE none repeat scroll 0%;
     padding: 2px 5px 5px 5px;
     border: 1px solid #667788;
@@ -109,14 +109,14 @@ DIV#ExportSQL-mainDiv DIV.elementGroup {
     width: auto;
     position: relative;
 }
-DIV#ExportSQL-mainDiv DIV.elementGroupFooter {
+DIV#DaTraVExport-mainDiv DIV.elementGroupFooter {
     width: 100%;
     float: right;
     text-align: right;
     font-weight: bold;
     color: #666;
 }
-DIV#ExportSQL-mainDiv DIV.messagePanel {
+DIV#DaTraVExport-mainDiv DIV.messagePanel {
     height: 200px;
     float: right;
     width: 40%;
@@ -125,29 +125,29 @@ DIV#ExportSQL-mainDiv DIV.messagePanel {
     background: #CEDBEF;
     padding: 5px 5px 5px 5px;
 }
-DIV#ExportSQL-mainDiv span.dropedItem {
+DIV#DaTraVExport-mainDiv span.dropedItem {
     padding: 7px 5px 2px 5px;
     cursor: pointer;
 }
-DIV#ExportSQL-mainDiv span.dropedItem:hover {
+DIV#DaTraVExport-mainDiv span.dropedItem:hover {
     background: #DEEBEF;
 }
 
 /*** CSS for the Plugin Help tab ***/
 
-DIV#ExportSQL-TABS H1 {
+DIV#DaTraVExport-TABS H1 {
     margin:0 0 10px 0;
     font-size:16px;
     color:#42558C;
     font-weight:bold;
 }
-DIV#ExportSQL-TABS H2 {
+DIV#DaTraVExport-TABS H2 {
     margin:10px 0 10px 0;
     font-size:13px;
     color:#42558C;
     font-weight:bold;
 }
-DIV#ExportSQL-TABS HR {
+DIV#DaTraVExport-TABS HR {
     margin:0;
 }
 

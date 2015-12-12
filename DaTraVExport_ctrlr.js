@@ -1,11 +1,11 @@
 /* this function is called after the HTML is loaded into the viewer DIV */
-i2b2.ExportSQL.Init = function(loadedDiv) {
-    var qmDivName      = 'ExportSQL-QMDROP';
-    var conceptDivName = 'ExportSQL-IDROP';
+i2b2.DaTraVExport.Init = function(loadedDiv) {
+    var qmDivName      = 'DaTraVExport-QMDROP';
+    var conceptDivName = 'DaTraVExport-IDROP';
     var op_trgt        = { dropTarget: true };
     var cfgObj         = { activeIndex: 0 };
     var endYear        = new Date().getFullYear();
-    i2b2.ExportSQL.model.minStartYear = 2009;
+    i2b2.DaTraVExport.model.minStartYear = 2009;
 
     var counter        = 1;
     var selectFromYear = document.getElementById('fromYear');
@@ -15,69 +15,69 @@ i2b2.ExportSQL.Init = function(loadedDiv) {
     selectFromYear.options[0] = new Option('---');
     selectToYear.options[0]   = new Option('---');
 
-    for (var year = i2b2.ExportSQL.model.minStartYear; year <= endYear; year++) {
+    for (var year = i2b2.DaTraVExport.model.minStartYear; year <= endYear; year++) {
 	selectFromYear.options[counter] = new Option(year);
 	selectToYear.options[counter]   = new Option(year);
 	counter++;
     }
 
-    i2b2.ExportSQL.model.tablespace        = 'DATRAVEXAMPLE';
-    i2b2.ExportSQL.model.concepts          = [];
-    i2b2.ExportSQL.model.multiResultTables = false;
+    i2b2.DaTraVExport.model.tablespace        = 'DATRAVEXAMPLE';
+    i2b2.DaTraVExport.model.concepts          = [];
+    i2b2.DaTraVExport.model.multiResultTables = false;
 
     i2b2.sdx.Master.AttachType(qmDivName, 'QM', op_trgt);
     i2b2.sdx.Master.AttachType(conceptDivName, 'CONCPT', op_trgt);
 
     i2b2.sdx.Master.setHandlerCustom(
 	qmDivName, 'QM', 'DropHandler'
-	, function(sdxData) { i2b2.ExportSQL.doDrop(sdxData); }
+	, function(sdxData) { i2b2.DaTraVExport.doDrop(sdxData); }
     );
     i2b2.sdx.Master.setHandlerCustom(
 	conceptDivName, 'CONCPT', 'DropHandler'
-	, function(sdxData) { i2b2.ExportSQL.doDropConcept(sdxData); }
+	, function(sdxData) { i2b2.DaTraVExport.doDropConcept(sdxData); }
     );
 
-    i2b2.ExportSQL.redrawMessagePanel();
+    i2b2.DaTraVExport.redrawMessagePanel();
 
-    this.yuiTabs = new YAHOO.widget.TabView('ExportSQL-TABS', cfgObj);
+    this.yuiTabs = new YAHOO.widget.TabView('DaTraVExport-TABS', cfgObj);
 };
 
 /* this function is called before the plugin is unloaded by the framework */
-i2b2.ExportSQL.Unload = function() {
+i2b2.DaTraVExport.Unload = function() {
     return true;
 };
 
 /* resets the plugins model data and redraws the view to initial stage */
-i2b2.ExportSQL.reset = function() {
-    i2b2.ExportSQL.model.concepts = [];
-    i2b2.ExportSQL.model.fromYear = undefined;
-    i2b2.ExportSQL.model.toYear   = undefined;
-    i2b2.ExportSQL.model.qm       = undefined;
+i2b2.DaTraVExport.reset = function() {
+    i2b2.DaTraVExport.model.concepts = [];
+    i2b2.DaTraVExport.model.fromYear = undefined;
+    i2b2.DaTraVExport.model.toYear   = undefined;
+    i2b2.DaTraVExport.model.qm       = undefined;
 
     document.getElementById('fromYear').selectedIndex = 0;
     document.getElementById('toYear').selectedIndex   = 0;
-    $('ExportSQL-QMDROP').innerHTML = 'Drop a query object here';
+    $('DaTraVExport-QMDROP').innerHTML = 'Drop a query object here';
     document.getElementById('results').hide();
 
-    i2b2.ExportSQL.redrawConceptDiv();
-    i2b2.ExportSQL.checkModel();
+    i2b2.DaTraVExport.redrawConceptDiv();
+    i2b2.DaTraVExport.checkModel();
 };
 
 /**
  * this function is called after modifying a year value in the plugins view
  * the set or modifyied year gets added to the model data
  */
-i2b2.ExportSQL.setYear = function() {
+i2b2.DaTraVExport.setYear = function() {
     var fromYear = document.getElementById('fromYear');
     var toYear   = document.getElementById('toYear');
 
     fromYear = fromYear.options[fromYear.selectedIndex].text;
     toYear   = toYear.options[toYear.selectedIndex].text;
 
-    i2b2.ExportSQL.model.fromYear = fromYear;
-    i2b2.ExportSQL.model.toYear   = toYear;
+    i2b2.DaTraVExport.model.fromYear = fromYear;
+    i2b2.DaTraVExport.model.toYear   = toYear;
 
-    i2b2.ExportSQL.checkModel();
+    i2b2.DaTraVExport.checkModel();
 };
 
 /**
@@ -85,24 +85,24 @@ i2b2.ExportSQL.setYear = function() {
  * if the value is true, the generated SQL-statement creates a table for each
  * required Satzart to prevent redundant data collection
  */
-i2b2.ExportSQL.setmultiResultTable = function() {
+i2b2.DaTraVExport.setmultiResultTable = function() {
     var checked = document.getElementById('multiResultTable').checked;
     
-    i2b2.ExportSQL.model.multiResultTables = checked;
-    i2b2.ExportSQL.checkModel();
+    i2b2.DaTraVExport.model.multiResultTables = checked;
+    i2b2.DaTraVExport.checkModel();
 };
 
 /* redraws the message panel depending on available values in the model data */
-i2b2.ExportSQL.redrawMessagePanel = function() {
+i2b2.DaTraVExport.redrawMessagePanel = function() {
     var message     = '';
     var qmText      = 'Drop a previous executed Query from the bottom left "Previous Queries" window.';
     var yearText    = 'Specify at least a start-year.';
     var conceptText = 'Drop some concepts (no catalogues).';
-    var fromYear    = i2b2.ExportSQL.model.fromYear;
-    var toYear      = i2b2.ExportSQL.model.toYear;
-    var concepts    = i2b2.ExportSQL.model.concepts;
+    var fromYear    = i2b2.DaTraVExport.model.fromYear;
+    var toYear      = i2b2.DaTraVExport.model.toYear;
+    var concepts    = i2b2.DaTraVExport.model.concepts;
 
-    if (i2b2.ExportSQL.model.qm)
+    if (i2b2.DaTraVExport.model.qm)
 	message += '<li>' + qmText + ' &#10004;</li>';
     else message += '<b><li>' + qmText + '</li></b>';
  
@@ -122,29 +122,29 @@ i2b2.ExportSQL.redrawMessagePanel = function() {
  *
  * @param {Object[]} sdxData - droped sdx object
  */
-i2b2.ExportSQL.doDrop = function(sdxData) {
+i2b2.DaTraVExport.doDrop = function(sdxData) {
     sdxData = sdxData[0];
-    i2b2.ExportSQL.model.qm = sdxData;
+    i2b2.DaTraVExport.model.qm = sdxData;
 
-    $('ExportSQL-QMDROP').innerHTML = i2b2.h.Escape(sdxData.sdxInfo.sdxDisplayName);
+    $('DaTraVExport-QMDROP').innerHTML = i2b2.h.Escape(sdxData.sdxInfo.sdxDisplayName);
 
-    i2b2.ExportSQL.checkModel();		
+    i2b2.DaTraVExport.checkModel();		
 };
 
 /* checks if the model data is valid and ready for an execution */
-i2b2.ExportSQL.checkModel = function() {
-    var fromYear = i2b2.ExportSQL.model.fromYear;
-    var toYear   = i2b2.ExportSQL.model.toYear;
-    var concepts = i2b2.ExportSQL.model.concepts;
+i2b2.DaTraVExport.checkModel = function() {
+    var fromYear = i2b2.DaTraVExport.model.fromYear;
+    var toYear   = i2b2.DaTraVExport.model.toYear;
+    var concepts = i2b2.DaTraVExport.model.concepts;
 
     if (!isNaN(fromYear) && (isNaN(toYear) || fromYear <= toYear)
 	&& concepts && concepts.length > 0
-	&& i2b2.ExportSQL.model.qm
+	&& i2b2.DaTraVExport.model.qm
        ) {
-	i2b2.ExportSQL.model.dirtyResultsData = true;
-    } else i2b2.ExportSQL.model.dirtyResultsData = false;
+	i2b2.DaTraVExport.model.dirtyResultsData = true;
+    } else i2b2.DaTraVExport.model.dirtyResultsData = false;
     
-    i2b2.ExportSQL.redrawMessagePanel();
+    i2b2.DaTraVExport.redrawMessagePanel();
 };
 
 /** 
@@ -152,7 +152,7 @@ i2b2.ExportSQL.checkModel = function() {
  * 
  * @param {Object[]} sdxData - droped sdx object
  */
-i2b2.ExportSQL.doDropConcept = function(sdxData) {
+i2b2.DaTraVExport.doDropConcept = function(sdxData) {
     var concept = {};
     sdxData             = sdxData[0];
     concept.dimdiColumn = sdxData.sdxInfo.sdxKeyValue.replace(/(.*?\\)(SA\d\d\d.*?)(\\$)/, '$2');
@@ -160,18 +160,18 @@ i2b2.ExportSQL.doDropConcept = function(sdxData) {
  
     if (!concept.dimdiColumn.match(/SA\d\d\d[^\\]*$/))
 	return;
-    i2b2.ExportSQL.model.concepts.push(concept);
+    i2b2.DaTraVExport.model.concepts.push(concept);
     
     /* check for duplicated concepts and remove them */
     var temp = [];
-    for (i = 0; i < i2b2.ExportSQL.model.concepts.length; i++) {
-	if (temp.indexOf(i2b2.ExportSQL.model.concepts[i].dimdiColumn) != -1)
-	    i2b2.ExportSQL.model.concepts.splice(i, 1);
-	else temp.push(i2b2.ExportSQL.model.concepts[i].dimdiColumn);
+    for (i = 0; i < i2b2.DaTraVExport.model.concepts.length; i++) {
+	if (temp.indexOf(i2b2.DaTraVExport.model.concepts[i].dimdiColumn) != -1)
+	    i2b2.DaTraVExport.model.concepts.splice(i, 1);
+	else temp.push(i2b2.DaTraVExport.model.concepts[i].dimdiColumn);
     }
 
-    i2b2.ExportSQL.redrawConceptDiv();    
-    i2b2.ExportSQL.checkModel();
+    i2b2.DaTraVExport.redrawConceptDiv();    
+    i2b2.DaTraVExport.checkModel();
 };
 
 /**
@@ -179,28 +179,28 @@ i2b2.ExportSQL.doDropConcept = function(sdxData) {
  *
  * @param {string} dimdiColumn
  */
-i2b2.ExportSQL.removeItem = function(dimdiColumn) {
+i2b2.DaTraVExport.removeItem = function(dimdiColumn) {
     var concepts = [];
-    for (i = 0; i < i2b2.ExportSQL.model.concepts.length; i++) {
-	var concept = i2b2.ExportSQL.model.concepts[i];
+    for (i = 0; i < i2b2.DaTraVExport.model.concepts.length; i++) {
+	var concept = i2b2.DaTraVExport.model.concepts[i];
 	if (concept.dimdiColumn != dimdiColumn)
 	    concepts.push(concept);
     }
-    i2b2.ExportSQL.model.concepts = concepts;
+    i2b2.DaTraVExport.model.concepts = concepts;
 
-    i2b2.ExportSQL.redrawConceptDiv();
-    i2b2.ExportSQL.checkModel();
+    i2b2.DaTraVExport.redrawConceptDiv();
+    i2b2.DaTraVExport.checkModel();
 };
 
 /**
  * the function is called if a concept is added or removed,
  * adds a clickable span for each concept
  */
-i2b2.ExportSQL.redrawConceptDiv = function() {    
+i2b2.DaTraVExport.redrawConceptDiv = function() {    
     var icon      = 'sdx_ONT_CONCPT_leaf.gif'; // 'sdx_ONT_CONCPT_branch-exp.gif';
-    var innerHTML = i2b2.ExportSQL.model.concepts.map(
+    var innerHTML = i2b2.DaTraVExport.model.concepts.map(
 	function(x) {
-	    return '<span class="dropedItem" onclick="i2b2.ExportSQL.removeItem(\'' + x.dimdiColumn + '\')" title="' + x.dimdiColumn + '">'
+	    return '<span class="dropedItem" onclick="i2b2.DaTraVExport.removeItem(\'' + x.dimdiColumn + '\')" title="' + x.dimdiColumn + '">'
 		+ '<img src="js-i2b2/cells/ONT/assets/' + icon + '">'
 		+ '&nbsp;&nbsp;' + x.displayName
 		+ '</span>';
@@ -209,15 +209,15 @@ i2b2.ExportSQL.redrawConceptDiv = function() {
 
     if (!innerHTML)
 	innerHTML = 'Drop concepts here';
-    $('ExportSQL-IDROP').innerHTML = innerHTML;
+    $('DaTraVExport-IDROP').innerHTML = innerHTML;
 };
 
 /**
  * copies the resulting sql to clipboard
  * if an error occurs, the sql gets marked so the user can copy it manually
  */
-i2b2.ExportSQL.copyToClipboard = function() {
-    var div = document.getElementById('ExportSQL-StatementBox');
+i2b2.DaTraVExport.copyToClipboard = function() {
+    var div = document.getElementById('DaTraVExport-StatementBox');
 
     if (typeof window.getSelection != 'undefined' && typeof document.createRange != 'undefined') {
         var range = document.createRange();
@@ -234,7 +234,7 @@ i2b2.ExportSQL.copyToClipboard = function() {
     try {
 	if (!document.execCommand('Copy'))
 	    throw 'Unable to copy to clipboard';
-	i2b2.ExportSQL.clearSelection();
+	i2b2.DaTraVExport.clearSelection();
     } catch (e) {
 	alert('Unable to copy to clipboard. Please copy the selection manualy by pressing CTRL + C or CMD + C');
     }
@@ -243,7 +243,7 @@ i2b2.ExportSQL.copyToClipboard = function() {
 /**
  * removes the text selection from the sql, if there is any
  */
-i2b2.ExportSQL.clearSelection = function() {
+i2b2.DaTraVExport.clearSelection = function() {
     if (document.selection) {
         document.selection.empty();
     } else if (window.getSelection) {
@@ -255,25 +255,25 @@ i2b2.ExportSQL.clearSelection = function() {
  * starts the generation of the sql statement
  * and displays it on the web page
  */
-i2b2.ExportSQL.getResults = function() {
-    if (!i2b2.ExportSQL.model.dirtyResultsData) {
+i2b2.DaTraVExport.getResults = function() {
+    if (!i2b2.DaTraVExport.model.dirtyResultsData) {
 	return;
     }
     
     //try {
-	var qm_id      = i2b2.ExportSQL.model.qm.sdxInfo.sdxKeyValue;
-	var result     = i2b2.ExportSQL.processQM(qm_id);
+	var qm_id      = i2b2.DaTraVExport.model.qm.sdxInfo.sdxKeyValue;
+	var result     = i2b2.DaTraVExport.processQM(qm_id);
 
-	result[0] += i2b2.ExportSQL.processItems();
+	result[0] += i2b2.DaTraVExport.processItems();
 
-	document.getElementById('ExportSQL-StatementBox').innerHTML = 
+	document.getElementById('DaTraVExport-StatementBox').innerHTML = 
 	    '<pre>' + result[0] + '</pre>';
 	document.getElementById('results').style.display = 'block';
     //} catch (e) {
     //	alert(e);
     //}
 
-    i2b2.ExportSQL.model.dirtyResultsData = false;
+    i2b2.DaTraVExport.model.dirtyResultsData = false;
 };
 
 /**
@@ -283,8 +283,8 @@ i2b2.ExportSQL.getResults = function() {
  *
  * @return {Object[]} array without duplicates
  */
-i2b2.ExportSQL.uniqueElements = function(array) {
-    if (!array) throw 'i2b2.ExportSQL.uniqueElements(): provided array is null';
+i2b2.DaTraVExport.uniqueElements = function(array) {
+    if (!array) throw 'i2b2.DaTraVExport.uniqueElements(): provided array is null';
 
     var temp = [];
     var result = array.slice();
@@ -308,10 +308,10 @@ i2b2.ExportSQL.uniqueElements = function(array) {
  *
  * @return {Object[]} array with 0: generated SQL and 1: XML-message of the QM
  */
-i2b2.ExportSQL.processQM = function(qm_id, outerPanelNumber) {
-    var tablespace = i2b2.ExportSQL.model.tablespace;
+i2b2.DaTraVExport.processQM = function(qm_id, outerPanelNumber) {
+    var tablespace = i2b2.DaTraVExport.model.tablespace;
     var msg_vals   = { qm_key_value: qm_id };
-    var results    = i2b2.CRC.ajax.getRequestXml_fromQueryMasterId('Plugin:ExportSQL', msg_vals);
+    var results    = i2b2.CRC.ajax.getRequestXml_fromQueryMasterId('Plugin:DaTraVExport', msg_vals);
     var queryDef   = i2b2.h.XPath(results.refXML, 'descendant::query_name/..');
     var xmlResults = [];
 
@@ -320,7 +320,7 @@ i2b2.ExportSQL.processQM = function(qm_id, outerPanelNumber) {
     }
 
     /*** Population Query ***/
-    xmlResults.push(i2b2.ExportSQL.processQMXML(queryDef[0], outerPanelNumber));
+    xmlResults.push(i2b2.DaTraVExport.processQMXML(queryDef[0], outerPanelNumber));
 
 
     /*** Event Queries ***/
@@ -328,7 +328,7 @@ i2b2.ExportSQL.processQM = function(qm_id, outerPanelNumber) {
     var eventConstraints = i2b2.h.XPath(queryDef[0], 'descendant::subquery_constraint');
 
     for (var i = 0; i < events.length; i++) {
-    	xmlResults.push(i2b2.ExportSQL.processQMXML(events[i], outerPanelNumber));
+    	xmlResults.push(i2b2.DaTraVExport.processQMXML(events[i], outerPanelNumber));
     }
 
 
@@ -346,7 +346,7 @@ i2b2.ExportSQL.processQM = function(qm_id, outerPanelNumber) {
 	/*** INTERSECT expression for WHERE constraints ***/
 	var sameVisitTables = [];
 	var diffVisitTables = [];
-	panelResultTables = i2b2.ExportSQL.uniqueElements(panelResultTables);
+	panelResultTables = i2b2.DaTraVExport.uniqueElements(panelResultTables);
 
 	if (eventId) { //current query is an event
 	    createSql += 'SELECT psid, ausgleichsjahr FROM ' + panelResultTables[0];
@@ -425,13 +425,13 @@ i2b2.ExportSQL.processQM = function(qm_id, outerPanelNumber) {
 	switch (firstAggOperator) {
 	case 'FIRST': firstAggOperator = 'MIN'; break;
 	case 'LAST' : firstAggOperator = 'MAX'; break;
-	default: throw 'i2b2.ExportSQL.processQM(): invalid first aggregate operator (' + firstAggOperator + ') in event constraint';
+	default: throw 'i2b2.DaTraVExport.processQM(): invalid first aggregate operator (' + firstAggOperator + ') in event constraint';
 	};
 
 	switch (secondAggOperator) {
 	case 'FIRST': secondAggOperator = 'MIN'; break;
 	case 'LAST' : secondAggOperator = 'MAX'; break;
-	default: throw 'i2b2.ExportSQL.processQM(): invalid second aggregate operator (' + secondAggOperator + ') in event constraint';
+	default: throw 'i2b2.DaTraVExport.processQM(): invalid second aggregate operator (' + secondAggOperator + ') in event constraint';
 	};
 
 	switch (operator) {
@@ -440,7 +440,7 @@ i2b2.ExportSQL.processQM = function(qm_id, outerPanelNumber) {
 	case 'EQUAL'       : operator = '=';  break;
 	case 'GREATER'     : operator = '>';  break;
 	case 'GREATEREQUAL': operator = '>='; break;
-	default: throw 'i2b2.ExportSQL.processQM(): invalid operator (' + operator + ') in event constraint';
+	default: throw 'i2b2.DaTraVExport.processQM(): invalid operator (' + operator + ') in event constraint';
 	};
 
 	sql += '/*** ' + (i + 1) + '. Event Constraint ***/<br>'
@@ -468,7 +468,7 @@ i2b2.ExportSQL.processQM = function(qm_id, outerPanelNumber) {
  *
  * @return {Object} result
  */
-i2b2.ExportSQL.newResultObj = function(statement, panelResultTables, subQuerySql, eventId) {
+i2b2.DaTraVExport.newResultObj = function(statement, panelResultTables, subQuerySql, eventId) {
     var result = {
 	statement        : statement,
 	panelResultTables: panelResultTables,
@@ -486,9 +486,9 @@ i2b2.ExportSQL.newResultObj = function(statement, panelResultTables, subQuerySql
  *
  * @return {Object} result 
  */
-i2b2.ExportSQL.processQMXML = function(queryDef, outerPanelNumber) {
-    var tablespace  = i2b2.ExportSQL.model.tablespace;
-    var statement   = i2b2.ExportSQL.newStatementObj();
+i2b2.DaTraVExport.processQMXML = function(queryDef, outerPanelNumber) {
+    var tablespace  = i2b2.DaTraVExport.model.tablespace;
+    var statement   = i2b2.DaTraVExport.newStatementObj();
     var timing      = i2b2.h.getXNodeVal(queryDef, 'query_timing');
     var specificity = i2b2.h.getXNodeVal(queryDef, 'specificity_scale');
     var panels      = i2b2.h.XPath(queryDef, 'child::panel');
@@ -507,20 +507,20 @@ i2b2.ExportSQL.processQMXML = function(queryDef, outerPanelNumber) {
 	var panelTiming        = i2b2.h.getXNodeVal(panel, 'panel_timing') || 'ANY';
 	var panelOccurences    = i2b2.h.getXNodeVal(panel, 'total_item_occurrences');
 	var panelAccuracy      = i2b2.h.getXNodeVal(panel, 'panel_accuracy_scale');					
-	var panelDateFrom      = i2b2.ExportSQL.extractDate(i2b2.h.getXNodeVal(panel, 'panel_date_from'));
-	var panelDateTo        = i2b2.ExportSQL.extractDate(i2b2.h.getXNodeVal(panel, 'panel_date_to'));
+	var panelDateFrom      = i2b2.DaTraVExport.extractDate(i2b2.h.getXNodeVal(panel, 'panel_date_from'));
+	var panelDateTo        = i2b2.DaTraVExport.extractDate(i2b2.h.getXNodeVal(panel, 'panel_date_to'));
 	var panelItems         = i2b2.h.XPath(panel, 'descendant::item[item_key]');
 	var subQueryCounter    = 1;
 
 	if (!panelDateFrom) { // from date in group is null -> use selected year values
-	    panelDateFrom = i2b2.ExportSQL.extractDate(i2b2.ExportSQL.model.fromYear);
-	    panelDateTo   = i2b2.ExportSQL.extractDate(i2b2.ExportSQL.model.toYear);
+	    panelDateFrom = i2b2.DaTraVExport.extractDate(i2b2.DaTraVExport.model.fromYear);
+	    panelDateTo   = i2b2.DaTraVExport.extractDate(i2b2.DaTraVExport.model.toYear);
 	    // alert('Added selected year values to a query or subquery, because it had no dates asigned.');
 	}
-	if (panelDateFrom.Year < i2b2.ExportSQL.model.minStartYear
-	    || (panelDateTo && panelDateTo.Year < i2b2.ExportSQL.model.minStartYear)
+	if (panelDateFrom.Year < i2b2.DaTraVExport.model.minStartYear
+	    || (panelDateTo && panelDateTo.Year < i2b2.DaTraVExport.model.minStartYear)
 	   ) {
-	    throw 'processQM(): date in a query or subquery is before ' + i2b2.ExportSQL.model.minStartYear;
+	    throw 'processQM(): date in a query or subquery is before ' + i2b2.DaTraVExport.model.minStartYear;
 	}
 
 	if (eventId)
@@ -558,7 +558,7 @@ i2b2.ExportSQL.processQMXML = function(queryDef, outerPanelNumber) {
 	    /*** item is a querymaster ***/
 	    if (item_key.match(/masterid:/)) {
 		var masterid = item_key.replace('masterid:', '');
-		subQuerySql += i2b2.ExportSQL.processQM(
+		subQuerySql += i2b2.DaTraVExport.processQM(
 		    masterid
 		    , panelNumber + '_q' + subQueryCounter
 		    , panelExclude
@@ -586,7 +586,7 @@ i2b2.ExportSQL.processQMXML = function(queryDef, outerPanelNumber) {
 	}
     }
 
-    return i2b2.ExportSQL.newResultObj(statement, panelResultTables, subQuerySql, eventId);
+    return i2b2.DaTraVExport.newResultObj(statement, panelResultTables, subQuerySql, eventId);
 };
 
 /**
@@ -599,7 +599,7 @@ i2b2.ExportSQL.processQMXML = function(queryDef, outerPanelNumber) {
  * @return {Object} date.Month
  * @return {Object} date.Day
  */
-i2b2.ExportSQL.extractDate = function(string) {
+i2b2.DaTraVExport.extractDate = function(string) {
     var date = {};
     if (string && string.match(/\d/)) {
 	string = string.replace('Z','');
@@ -623,7 +623,7 @@ i2b2.ExportSQL.extractDate = function(string) {
  *
  * @return {string} SQL
  */
-i2b2.ExportSQL.tableArrayToSQLString = function(array) {
+i2b2.DaTraVExport.tableArrayToSQLString = function(array) {
     var sql         = '';
     var prevSatzart = '';
     var satzarten   = [];
@@ -635,15 +635,15 @@ i2b2.ExportSQL.tableArrayToSQLString = function(array) {
 	if (i > 0) { // not the first element of the array
 	    sql += '<br>' + spaces + 'FULL JOIN<br>' 
 		+ spaces +  array[i] + '<br>'
-		+ spaces + 'ON (' + i2b2.ExportSQL.generateCaseString(satzarten, new Array('PSID', 'PSID2')) 
-		+ ' = ' + i2b2.ExportSQL.generateCaseString(new Array(curSatzart), new Array('PSID', 'PSID2')) 
+		+ spaces + 'ON (' + i2b2.DaTraVExport.generateCaseString(satzarten, new Array('PSID', 'PSID2')) 
+		+ ' = ' + i2b2.DaTraVExport.generateCaseString(new Array(curSatzart), new Array('PSID', 'PSID2')) 
 		+ '<br>' + spaces + Array(5).join('&nbsp;') + 'AND ' 
 	        + (curSatzart.match(/SA999/) || (satzarten.length == 1 && satzarten[0].match(/SA999/)) ?
 		   ''
-		   : i2b2.ExportSQL.generateCaseString(satzarten, new Array('PSID2')) + ' = ' + curSatzart + '_PSID2'
+		   : i2b2.DaTraVExport.generateCaseString(satzarten, new Array('PSID2')) + ' = ' + curSatzart + '_PSID2'
 		   + '<br>' + spaces + Array(5).join('&nbsp;') + 'AND ' 
 		  )
-		+ i2b2.ExportSQL.generateCaseString(satzarten, new Array('AUSGLEICHSJAHR')) + ' = ' + curSatzart + '_AUSGLEICHSJAHR'
+		+ i2b2.DaTraVExport.generateCaseString(satzarten, new Array('AUSGLEICHSJAHR')) + ' = ' + curSatzart + '_AUSGLEICHSJAHR'
 		+ ')';
 	} else { // first element
 	    sql += array[i];
@@ -669,7 +669,7 @@ i2b2.ExportSQL.tableArrayToSQLString = function(array) {
  *
  * @return {string} SQL CASE expression
  */
-i2b2.ExportSQL.generateCaseString = function(satzarten, sufix, alias, outerAlias) {
+i2b2.DaTraVExport.generateCaseString = function(satzarten, sufix, alias, outerAlias) {
     var sql        = '';
     var satzarten  = satzarten.slice();
     var outerAlias = outerAlias ? outerAlias + '.' : '';
@@ -708,11 +708,11 @@ i2b2.ExportSQL.generateCaseString = function(satzarten, sufix, alias, outerAlias
  *
  * @return {string} CREATE TABLE statement(s)
  */
-i2b2.ExportSQL.processItems = function() {
-    if (i2b2.ExportSQL.model.multiResultTables) {
-	return i2b2.ExportSQL.processItemsMultiResultTables();
+i2b2.DaTraVExport.processItems = function() {
+    if (i2b2.DaTraVExport.model.multiResultTables) {
+	return i2b2.DaTraVExport.processItemsMultiResultTables();
     } else {
-	return i2b2.ExportSQL.processItemsSingleResultTable();
+	return i2b2.DaTraVExport.processItemsSingleResultTable();
     }
 }
 
@@ -723,12 +723,12 @@ i2b2.ExportSQL.processItems = function() {
  *
  * @return {string} single CREATE TABLE statement
  */
-i2b2.ExportSQL.processItemsSingleResultTable = function() {
-    var items              = i2b2.ExportSQL.model.concepts.map(function(x) { return x.dimdiColumn; });
-    var tablespace         = i2b2.ExportSQL.model.tablespace;
-    var statement          = i2b2.ExportSQL.newStatementObj();
-    var fromDate           = i2b2.ExportSQL.extractDate(i2b2.ExportSQL.model.fromYear);
-    var toDate             = i2b2.ExportSQL.extractDate(i2b2.ExportSQL.model.toYear);
+i2b2.DaTraVExport.processItemsSingleResultTable = function() {
+    var items              = i2b2.DaTraVExport.model.concepts.map(function(x) { return x.dimdiColumn; });
+    var tablespace         = i2b2.DaTraVExport.model.tablespace;
+    var statement          = i2b2.DaTraVExport.newStatementObj();
+    var fromDate           = i2b2.DaTraVExport.extractDate(i2b2.DaTraVExport.model.fromYear);
+    var toDate             = i2b2.DaTraVExport.extractDate(i2b2.DaTraVExport.model.toYear);
 
     statement.addItemGroup(1, 0, 'ANY', 1, 1, fromDate, toDate);
     
@@ -737,11 +737,11 @@ i2b2.ExportSQL.processItemsSingleResultTable = function() {
 	statement.addItem(items[i], 'LA');
 	satzarten.push(items[i].replace(/(SA\d\d\d)(.*)/, '$1'));
     }
-    satzarten = i2b2.ExportSQL.uniqueElements(satzarten);
+    satzarten = i2b2.DaTraVExport.uniqueElements(satzarten);
 
-    var ausgleichsjahrCase = i2b2.ExportSQL.generateCaseString(satzarten, new Array('AUSGLEICHSJAHR'), 'ausgleichsjahr');
-    var berichtsjahrCase   = i2b2.ExportSQL.generateCaseString(satzarten, new Array('BERICHTSJAHR'), 'berichtsjahr');
-    var psid2Case          = i2b2.ExportSQL.generateCaseString(satzarten, new Array('PSID2'), 'psid2');
+    var ausgleichsjahrCase = i2b2.DaTraVExport.generateCaseString(satzarten, new Array('AUSGLEICHSJAHR'), 'ausgleichsjahr');
+    var berichtsjahrCase   = i2b2.DaTraVExport.generateCaseString(satzarten, new Array('BERICHTSJAHR'), 'berichtsjahr');
+    var psid2Case          = i2b2.DaTraVExport.generateCaseString(satzarten, new Array('PSID2'), 'psid2');
     var spaces             = Array(8).join('&nbsp;');
     
     return '/*** Result Table ***/<br>'
@@ -755,7 +755,7 @@ i2b2.ExportSQL.processItemsSingleResultTable = function() {
 	+ 'FROM ' + tablespace + '.rs<br>'
 	+ Array(6).join('&nbsp;') + 'LEFT JOIN<br>'
 	+ Array(6).join('&nbsp;') + statement.getTablesStringLatestGroup() + '<br>'
-	+ Array(6).join('&nbsp;') + 'ON (psid = ' + i2b2.ExportSQL.generateCaseString(satzarten, new Array('PSID', 'PSID2')) + ')' + '<br>'
+	+ Array(6).join('&nbsp;') + 'ON (psid = ' + i2b2.DaTraVExport.generateCaseString(satzarten, new Array('PSID', 'PSID2')) + ')' + '<br>'
 	+ ');';
 };
 
@@ -764,11 +764,11 @@ i2b2.ExportSQL.processItemsSingleResultTable = function() {
  *
  * @return {string} multiple CREATE TABLE statements, one per Satzart
  */
-i2b2.ExportSQL.processItemsMultiResultTables = function() {
-    var items              = i2b2.ExportSQL.model.concepts.map(function(x) { return x.dimdiColumn; });
-    var tablespace         = i2b2.ExportSQL.model.tablespace;
-    var fromDate           = i2b2.ExportSQL.extractDate(i2b2.ExportSQL.model.fromYear);
-    var toDate             = i2b2.ExportSQL.extractDate(i2b2.ExportSQL.model.toYear);
+i2b2.DaTraVExport.processItemsMultiResultTables = function() {
+    var items              = i2b2.DaTraVExport.model.concepts.map(function(x) { return x.dimdiColumn; });
+    var tablespace         = i2b2.DaTraVExport.model.tablespace;
+    var fromDate           = i2b2.DaTraVExport.extractDate(i2b2.DaTraVExport.model.fromYear);
+    var toDate             = i2b2.DaTraVExport.extractDate(i2b2.DaTraVExport.model.toYear);
     var satzarten          = [];
     var sql                = '';
     var spaces             = Array(8).join('&nbsp;');
@@ -777,13 +777,13 @@ i2b2.ExportSQL.processItemsMultiResultTables = function() {
     for (var i = 0; i < items.length; i++) {
 	satzarten.push(items[i].replace(/(SA\d\d\d)(.*)/, '$1'));
     }
-    satzarten = i2b2.ExportSQL.uniqueElements(satzarten);
+    satzarten = i2b2.DaTraVExport.uniqueElements(satzarten);
     satzarten.sort();
 
     /*** process satzarten ***/
     for (var i = 0; i < satzarten.length; i++) {
 	var cur_satzart = satzarten[i];
-	var statement   = i2b2.ExportSQL.newStatementObj();
+	var statement   = i2b2.DaTraVExport.newStatementObj();
 	var cur_items   = items.filter(
 	    function(x) { if (x.match(cur_satzart)) return x; }
 	);
@@ -802,7 +802,7 @@ i2b2.ExportSQL.processItemsMultiResultTables = function() {
 	    + 'FROM ' + tablespace + '.pat<br>'
 	    + Array(6).join('&nbsp;') + 'LEFT JOIN<br>'
 	    + Array(6).join('&nbsp;') + statement.getTablesStringLatestGroup() + '<br>'
-	    + Array(6).join('&nbsp;') + 'ON (psid = ' + i2b2.ExportSQL.generateCaseString(new Array(cur_satzart), new Array('PSID', 'PSID2')) + ')<br>'
+	    + Array(6).join('&nbsp;') + 'ON (psid = ' + i2b2.DaTraVExport.generateCaseString(new Array(cur_satzart), new Array('PSID', 'PSID2')) + ')<br>'
 	    + ');<br><br>';
     }
 
@@ -817,7 +817,7 @@ i2b2.ExportSQL.processItemsMultiResultTables = function() {
  * 
  * @return {string} converted number
  */
-i2b2.ExportSQL.addLeadingZeros = function(num, size) {
+i2b2.DaTraVExport.addLeadingZeros = function(num, size) {
     var string = '00' + num;
     return string.substr(string.length - size);
 };
@@ -825,7 +825,7 @@ i2b2.ExportSQL.addLeadingZeros = function(num, size) {
 /**
  * handles the processing and transformation to a SQL statement
  */
-i2b2.ExportSQL.newStatementObj = function() {
+i2b2.DaTraVExport.newStatementObj = function() {
     var statement = {
  	itemGroups: [],
 
@@ -855,7 +855,7 @@ i2b2.ExportSQL.newStatementObj = function() {
 	getTablesStringLatestGroup: function() {
 	    if (!this.getLatestItemGroup())
 		throw 'statement.getTablesStringLatestGroup(): no itemGroups in statement';
-	    return i2b2.ExportSQL.tableArrayToSQLString(
+	    return i2b2.DaTraVExport.tableArrayToSQLString(
 		this.getLatestItemGroup().getTables()
 	    );
 	},
@@ -936,7 +936,7 @@ i2b2.ExportSQL.newStatementObj = function() {
 
 	    /*** generate tablename ***/
 	    var tableName = 
-		i2b2.ExportSQL.model.tablespace + '.'
+		i2b2.DaTraVExport.model.tablespace + '.'
 		+ relevantGroups[0].getTempTableName().replace(/\d*$/, '')
 		+ '_sameins';
 
@@ -948,7 +948,7 @@ i2b2.ExportSQL.newStatementObj = function() {
 	    if (!fromYear || (toYear && fromYear > toYear))
 		throw 'statement.mergeSqlForItemGroupsWithSameInstanceNum(): Year values of panels with SAMEINSTANCENUM set are not compatible';
 
-	    satzarten = i2b2.ExportSQL.uniqueElements(satzarten);
+	    satzarten = i2b2.DaTraVExport.uniqueElements(satzarten);
 
 	    for (var i = 0; i < satzarten.length; i++) {
 		fromDate.Year = fromYear;
@@ -971,9 +971,9 @@ i2b2.ExportSQL.newStatementObj = function() {
 	    
 	    return 'DROP TABLE ' + tableName + ';<br>'
 		+ 'CREATE TABLE ' + tableName + ' AS (<br>'
-		+ 'SELECT ' + i2b2.ExportSQL.generateCaseString(satzarten, new Array('PSID', 'PSID2'), 'psid,') + '<br>'
-		+             i2b2.ExportSQL.generateCaseString(satzarten, new Array('AUSGLEICHSJAHR'), 'ausgleichsjahr') + '<br>'
-		+ 'FROM (SELECT * FROM ' + i2b2.ExportSQL.tableArrayToSQLString(tables) + ') q<br>'
+		+ 'SELECT ' + i2b2.DaTraVExport.generateCaseString(satzarten, new Array('PSID', 'PSID2'), 'psid,') + '<br>'
+		+             i2b2.DaTraVExport.generateCaseString(satzarten, new Array('AUSGLEICHSJAHR'), 'ausgleichsjahr') + '<br>'
+		+ 'FROM (SELECT * FROM ' + i2b2.DaTraVExport.tableArrayToSQLString(tables) + ') q<br>'
 		+ 'WHERE ' + whereConstraints + '<br>'
 		+ ');';
 	},
@@ -993,10 +993,10 @@ i2b2.ExportSQL.newStatementObj = function() {
 	    if (!number) throw 'statement.addItemGroup(): parameter number is null';
  	    if (!occurences) throw 'statement.addItemGroup(): parameter occurences is null';
 	    if (!dateFrom) throw 'statement.addItemGroup(): parameter dateFrom is null - group of a query or subquery does not contain a from-date';
-	    if (dateFrom.Year < i2b2.ExportSQL.model.minStartYear
-		|| (dateTo && dateTo.Year < i2b2.ExportSQL.model.minStartYear)
+	    if (dateFrom.Year < i2b2.DaTraVExport.model.minStartYear
+		|| (dateTo && dateTo.Year < i2b2.DaTraVExport.model.minStartYear)
 	       ) {
-		throw 'statement.addItemGroup(): dateFrom or dateTo is before ' + i2b2.ExportSQL.model.minStartYear;
+		throw 'statement.addItemGroup(): dateFrom or dateTo is before ' + i2b2.DaTraVExport.model.minStartYear;
 	    }
 
 	    var itemGroup = {
@@ -1028,20 +1028,20 @@ i2b2.ExportSQL.newStatementObj = function() {
 			sql += (sql ? '<br>' + Array(7).join('&nbsp;') + 'OR ' : '')
 			    + this.subQueryTables.map(
 			    function(x) {
-				return i2b2.ExportSQL.generateCaseString(satzarten, new Array('PSID', 'PSID2')) + ' IN (SELECT psid FROM ' + x + ')';
+				return i2b2.DaTraVExport.generateCaseString(satzarten, new Array('PSID', 'PSID2')) + ' IN (SELECT psid FROM ' + x + ')';
 			    }
 			).join('<br>' + Array(7).join('&nbsp;') + 'OR ');
 		    }
 
 		    if (this.occurences > 1) {
-			var caseStringPsid1 = i2b2.ExportSQL.generateCaseString(satzarten, new Array('PSID', 'PSID2'));
-			var caseStringPsid2 = i2b2.ExportSQL.generateCaseString(satzarten, new Array('q.PSID', 'q.PSID2'), null, 'q');
-			var caseStringAusg1 = i2b2.ExportSQL.generateCaseString(satzarten, new Array('AUSGLEICHSJAHR'));
-			var caseStringAusg2 = i2b2.ExportSQL.generateCaseString(satzarten, new Array('AUSGLEICHSJAHR'), null, 'q');
+			var caseStringPsid1 = i2b2.DaTraVExport.generateCaseString(satzarten, new Array('PSID', 'PSID2'));
+			var caseStringPsid2 = i2b2.DaTraVExport.generateCaseString(satzarten, new Array('q.PSID', 'q.PSID2'), null, 'q');
+			var caseStringAusg1 = i2b2.DaTraVExport.generateCaseString(satzarten, new Array('AUSGLEICHSJAHR'));
+			var caseStringAusg2 = i2b2.DaTraVExport.generateCaseString(satzarten, new Array('AUSGLEICHSJAHR'), null, 'q');
 
 			sql = this.occurences + ' <=<br>'
 			    + Array(7).join('&nbsp;') + '(SELECT count(*)<br>'
-			    + Array(8).join('&nbsp;') + 'FROM ' + i2b2.ExportSQL.tableArrayToSQLString(this.tables) + '<br>'
+			    + Array(8).join('&nbsp;') + 'FROM ' + i2b2.DaTraVExport.tableArrayToSQLString(this.tables) + '<br>'
 			    + Array(8).join('&nbsp;') + 'WHERE (<br>' 
 			    + Array(8).join('&nbsp;') +        sql + ')<br>'
 			    + Array(8).join('&nbsp;') +        'AND ' + caseStringPsid1 + ' = ' + caseStringPsid2 + '<br>'
@@ -1061,7 +1061,7 @@ i2b2.ExportSQL.newStatementObj = function() {
 		 * @return {string} create statement
 		 */
 		toSQLString: function() {
-		    var tablespace = i2b2.ExportSQL.model.tablespace;
+		    var tablespace = i2b2.DaTraVExport.model.tablespace;
 		    var satzarten  = this.getSatzarten();
 
 		    if (this.tables.length == 0 && this.subQueryTables.length == 0)
@@ -1075,14 +1075,14 @@ i2b2.ExportSQL.newStatementObj = function() {
 			return 'DROP TABLE ' + tablespace + '.' + this.getTempTableName() + ';<br>'
 			    + 'CREATE TABLE ' + tablespace + '.' + this.getTempTableName() + ' AS (<br>'
 			    + (this.exclude == 1 ?
-			       'SELECT ' + i2b2.ExportSQL.generateCaseString(satzarten, new Array('PSID', 'PSID2'), 'psid') + ',<br>'
+			       'SELECT ' + i2b2.DaTraVExport.generateCaseString(satzarten, new Array('PSID', 'PSID2'), 'psid') + ',<br>'
 			       + (satzarten.length == 1 && satzarten[0].match(/999/) ?
 				  ''
-				  : Array(8).join('&nbsp;') + i2b2.ExportSQL.generateCaseString(satzarten, new Array('PSID2'), 'psid2') + ',<br>'
+				  : Array(8).join('&nbsp;') + i2b2.DaTraVExport.generateCaseString(satzarten, new Array('PSID2'), 'psid2') + ',<br>'
 				 )
-			       + Array(8).join('&nbsp;') + i2b2.ExportSQL.generateCaseString(satzarten, new Array('AUSGLEICHSJAHR'), 'ausgleichsjahr') + '<br>'
-			       + 'FROM ' + i2b2.ExportSQL.tableArrayToSQLString(this.tables) + '<br>'
-			       + 'WHERE ' + i2b2.ExportSQL.generateCaseString(satzarten, new Array('PSID', 'PSID2')) + ' NOT IN (' + inConstraint + ')'
+			       + Array(8).join('&nbsp;') + i2b2.DaTraVExport.generateCaseString(satzarten, new Array('AUSGLEICHSJAHR'), 'ausgleichsjahr') + '<br>'
+			       + 'FROM ' + i2b2.DaTraVExport.tableArrayToSQLString(this.tables) + '<br>'
+			       + 'WHERE ' + i2b2.DaTraVExport.generateCaseString(satzarten, new Array('PSID', 'PSID2')) + ' NOT IN (' + inConstraint + ')'
 			       : this.subQueryTables.map(
 				   function(x) { return 'SELECT psid, ausgleichsjahr FROM ' + x; }
 			       ).join('<br>UNION<br>')
@@ -1092,13 +1092,13 @@ i2b2.ExportSQL.newStatementObj = function() {
 		    
 		    return 'DROP TABLE ' + tablespace + '.' + this.getTempTableName() + ';<br>'
 			+ 'CREATE TABLE ' + tablespace + '.' + this.getTempTableName() + ' AS (<br>'
-			+ 'SELECT ' + i2b2.ExportSQL.generateCaseString(satzarten, new Array('PSID', 'PSID2'), 'psid') + ',<br>' 
+			+ 'SELECT ' + i2b2.DaTraVExport.generateCaseString(satzarten, new Array('PSID', 'PSID2'), 'psid') + ',<br>' 
 		        + (satzarten.length == 1 && satzarten[0].match(/999/) ?
 			   '' 
-			   : Array(8).join('&nbsp;') + i2b2.ExportSQL.generateCaseString(satzarten, new Array('PSID2'), 'psid2') + ',<br>'
+			   : Array(8).join('&nbsp;') + i2b2.DaTraVExport.generateCaseString(satzarten, new Array('PSID2'), 'psid2') + ',<br>'
 			  ) // select psid2 if there are multiple satzarten or satzart != 999
-			+ Array(8).join('&nbsp;') + i2b2.ExportSQL.generateCaseString(satzarten, new Array('AUSGLEICHSJAHR'), 'ausgleichsjahr') + '<br>'
-			+ 'FROM (SELECT * FROM ' + i2b2.ExportSQL.tableArrayToSQLString(this.tables) + ') q<br>'
+			+ Array(8).join('&nbsp;') + i2b2.DaTraVExport.generateCaseString(satzarten, new Array('AUSGLEICHSJAHR'), 'ausgleichsjahr') + '<br>'
+			+ 'FROM (SELECT * FROM ' + i2b2.DaTraVExport.tableArrayToSQLString(this.tables) + ') q<br>'
 			+ 'WHERE ' + this.constraintsToSQLString() + '<br>);';
 		},
 
@@ -1258,7 +1258,7 @@ i2b2.ExportSQL.newStatementObj = function() {
 		    if (!dimdiColumn) throw 'itemGroup.extractTableWithTablespace(): parameter dimdiColumn is null';
 		    if (!year) throw 'itemGroup.extractTableWithTablespace(): parameter year is null';
 		    
- 		    return i2b2.ExportSQL.model.tablespace + '.' + this.extractTable(dimdiColumn, year);
+ 		    return i2b2.DaTraVExport.model.tablespace + '.' + this.extractTable(dimdiColumn, year);
  		},
 
 		/**
@@ -1344,7 +1344,7 @@ i2b2.ExportSQL.newStatementObj = function() {
 				return this.dimdiColumn + ' IS NOT NULL';
 			    else if (!value.match(/\d/)) { // upper class without codes
 				return this.dimdiColumn + ' IN (SELECT CODE '
-				    + 'FROM ' + i2b2.ExportSQL.model.tablespace + '.ICDCODES ' 
+				    + 'FROM ' + i2b2.DaTraVExport.model.tablespace + '.ICDCODES ' 
 				    + "WHERE KAPNR = '" + value + "')";
 			    } else if (value.match(/-/)) { // range of codes
 				var codes      = value.split('-');

@@ -1,46 +1,46 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html>
   <body>
-    <div id="ExportSQL-mainDiv">      
-      <div id="ExportSQL-TABS" class="yui-navset">
+    <div id="DaTraVExport-mainDiv">      
+      <div id="DaTraVExport-TABS" class="yui-navset">
 	<ul class="yui-nav">
-	  <li id="ExportSQL-TAB0" class="selected"><a href="#ExportSQL-TAB0"><em>Generate SQL</em></a></li>
-	  <li id="ExportSQL-TAB1"><a href="#ExportSQL-TAB1"><em>Plugin Help</em></a></li>
+	  <li id="DaTraVExport-TAB0" class="selected"><a href="#DaTraVExport-TAB0"><em>Generate SQL</em></a></li>
+	  <li id="DaTraVExport-TAB1"><a href="#DaTraVExport-TAB1"><em>Plugin Help</em></a></li>
 	</ul>
-	<div class="yui-content" id="ExportSQL-CONTENT">
+	<div class="yui-content" id="DaTraVExport-CONTENT">
 	  <!--tab1-->
 	  <div>
-	    <div class="ExportSQL-MainContent">
-	      <div class="ExportSQL-MainContentPad">
+	    <div class="DaTraVExport-MainContent">
+	      <div class="DaTraVExport-MainContentPad">
 		<div class="elementGroup">
 		  <div class="bar">  
 		    <div class="droptrgtlbl">i2b2 Query:</div>
-		    <div class="droptrgt SDX-PRS" id="ExportSQL-QMDROP">Drop a query object here</div>
+		    <div class="droptrgt SDX-PRS" id="DaTraVExport-QMDROP">Drop a query object here</div>
 		    <div class="yearSelects">
 		      <div class="droptrgtlbl">From year:</div>
-		      <select class="selectYear" id="fromYear" onchange="i2b2.ExportSQL.setYear();">
+		      <select class="selectYear" id="fromYear" onchange="i2b2.DaTraVExport.setYear();">
 			<option>---</option>
 		      </select>
 		      <div class="droptrgtlbl">To year:</div>
-		      <select class="selectYear" id="toYear" onchange="i2b2.ExportSQL.setYear();">
+		      <select class="selectYear" id="toYear" onchange="i2b2.DaTraVExport.setYear();">
 			<option>---</option>
 		      </select>
 		    </div>
 		  </div>
-		  <div class="droptrgt items" style="overflow:auto; height:200px; width:50%; background:white;" id="ExportSQL-IDROP">Drop concepts here</div>
+		  <div class="droptrgt items" style="overflow:auto; height:200px; width:50%; background:white;" id="DaTraVExport-IDROP">Drop concepts here</div>
 		  <div class="messagePanel" id="messagePanel"></div>
 		  <div class="elementGroupFooter">
-		    <div class="generateBox"><a href="JavaScript:i2b2.ExportSQL.reset()"><span id="resetBoxText">Reset</span></a></div>
-		    <div class="generateBox"><a href="JavaScript:i2b2.ExportSQL.getResults()"><span id="generateBoxText">Generate SQL</span></a></div>
-		    <input type="checkbox" id="multiResultTable" onchange="i2b2.ExportSQL.setmultiResultTable();">Separate tables per Satzart
+		    <div class="generateBox"><a href="JavaScript:i2b2.DaTraVExport.reset()"><span id="resetBoxText">Reset</span></a></div>
+		    <div class="generateBox"><a href="JavaScript:i2b2.DaTraVExport.getResults()"><span id="generateBoxText">Generate SQL</span></a></div>
+		    <input type="checkbox" id="multiResultTable" onchange="i2b2.DaTraVExport.setmultiResultTable();">Separate tables per Satzart
 		  </div>
 		</div>
 		<br>
 		<div class="results-finished" id="results" style="display:none;">
-		  <div id="ExportSQL-StatementBox" class="statementBox"></div>
+		  <div id="DaTraVExport-StatementBox" class="statementBox"></div>
 		  <br>
 		  <div class="generateBox" style="margin-top:-10px;width:auto;padding:0px 4px 0px 4px;">
-		    <a href="JavaScript:i2b2.ExportSQL.copyToClipboard()"><span id="clipboardBoxText">Copy to Clipboard</span></a>
+		    <a href="JavaScript:i2b2.DaTraVExport.copyToClipboard()"><span id="clipboardBoxText">Copy to Clipboard</span></a>
 		  </div>
 		</div>
 	      </div>
@@ -48,9 +48,9 @@
 	  </div>
 	  <!--tab2-->
 	  <div>
-	    <div class="ExportSQL-MainContent">
-	      <div class="ExportSQL-MainContentPad">
-		<h1>ExportSQL</h1>
+	    <div class="DaTraVExport-MainContent">
+	      <div class="DaTraVExport-MainContentPad">
+		<h1>DaTraV-Export</h1>
 		<hr size="1" noshade>
 		<h2>Introduction</h2>
 		---
