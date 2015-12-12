@@ -359,21 +359,21 @@ i2b2.DaTraVExport.processQM = function(qm_id, outerPanelNumber) {
 		else diffVisitTables.push(curResultTable);
 	    }
 	    if (sameVisitTables.length > 0) {
-		createSql += '(SELECT psid, ausgleichsjahr FROM (' + sameVisitTables.map(
-			function(x) { return 'SELECT psid, psid2, ausgleichsjahr FROM ' + x }
+		createSql += '(SELECT psid, berichtsjahr FROM (' + sameVisitTables.map(
+			function(x) { return 'SELECT psid, psid2, berichtsjahr FROM ' + x }
 		    ).join('<br>&nbsp;INTERSECT<br>&nbsp;') + '))';
 	    }
 	    if (diffVisitTables.length > 0) {
 		var diffVisitSql = '';
 
 		if (diffVisitTables.length == 1) {
-		    diffVisitSql += 'SELECT psid, ausgleichsjahr FROM ' + diffVisitTables[0];
+		    diffVisitSql += 'SELECT psid, berichtsjahr FROM ' + diffVisitTables[0];
 		} else {
-		    diffVisitSql += 'SELECT psid, ausgleichsjahr FROM ' + tablespace + '.temp_table';
+		    diffVisitSql += 'SELECT psid, berichtsjahr FROM ' + tablespace + '.temp_table';
 		}
 
 		if (sameVisitTables.length > 0) {
-		    createSql = 'SELECT psid, ausgleichsjahr<br>'
+		    createSql = 'SELECT psid, berichtsjahr<br>'
 			+ 'FROM (' + createSql + '<br>'
 			+ Array(7).join('&nbsp;') + 'UNION<br>'
 			+ Array(7).join('&nbsp;') + diffVisitSql + '<br>'
@@ -387,12 +387,12 @@ i2b2.DaTraVExport.processQM = function(qm_id, outerPanelNumber) {
 		}
 	    }
 	}
-	if (diffVisitTables.length > 1) { // keep information about Ausgleichsjahr
+	if (diffVisitTables.length > 1) { // keep information about Berichtsjahr
 	    tempSql = 'DROP TABLE ' + tablespace + '.temp_table;<br>'
 		+ 'CREATE TABLE ' + tablespace + '.temp_table AS (<br>'
-		+ 'SELECT psid, ausgleichsjahr<br>'
+		+ 'SELECT psid, berichtsjahr<br>'
 		+ 'FROM (<br>' + diffVisitTables.map(
-		    function(x) { return indent + 'SELECT psid, ausgleichsjahr FROM ' + x }
+		    function(x) { return indent + 'SELECT psid, berichtsjahr FROM ' + x }
 		).join('<br>' + indent + indent + 'UNION<br>') + '<br>'
 		+ indent + ') q<br>'
 		+ indent + 'JOIN ('
