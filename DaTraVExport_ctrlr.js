@@ -644,7 +644,8 @@ i2b2.DaTraVExport.tableArrayToSQLString = function(array) {
 		   : i2b2.DaTraVExport.generateCaseString(satzarten, new Array('PSID2')) + ' = ' + curSatzart + '_PSID2'
 		   + '<br>' + indent + indent + 'AND ' 
 		  )
-		+ i2b2.DaTraVExport.generateCaseString(satzarten, new Array('BERICHTSJAHR')) + ' = ' + curSatzart + '_BERICHTSJAHR' // workarround for SA951 + BERICHTSJAHR needed
+		+ i2b2.DaTraVExport.generateCaseString(satzarten, new Array('BERICHTSJAHR')) 
+		+ ' = ' + curSatzart + (curSatzart == 'SA951' ? '_AUSGLEICHSJAHR' : '_BERICHTSJAHR') // workarround for SA951 + BERICHTSJAHR
 		+ ')';
 	} else { // first element
 	    sql += array[i];
@@ -679,12 +680,12 @@ i2b2.DaTraVExport.generateCaseString = function(satzarten, sufix, alias, outerAl
     if (!satzarten || !sufix) return '';
     if (sufix[0].match(/PSID2/) && satzarten.indexOf('SA999') != -1)
 	satzarten.splice(satzarten.indexOf('SA999'), 1);
-    if (sufix[0].match(/BERICHTSJAHR/) && satzarten.indexOf('SA951') != -1)
-	satzarten.splice(satzarten.indexOf('SA951'), 1);
     if (satzarten.length == 1 && satzarten[0].match(/SA999/) && sufix.indexOf('PSID2') != -1)
 	sufix.splice(sufix.indexOf('PSID2'), 1);
-    if (satzarten.length == 1 && satzarten[0].match(/SA951/) && sufix.indexOf('BERICHTSJAHR') != -1)
-	sufix.splice(sufix.indexOf('BERICHTSJAHR'), 1);
+    if (satzarten.length == 1 && satzarten[0].match(/SA951/) && sufix.indexOf('BERICHTSJAHR') != -1) {
+    	var index = sufix.indexOf('BERICHTSJAHR');
+	sufix[index] = 'AUSGLEICHSJAHR';
+    }
     
     if (sufix.length == 0 || satzarten.length == 0) return '';
     if (satzarten.length == 1 && sufix.length == 1)
@@ -692,12 +693,17 @@ i2b2.DaTraVExport.generateCaseString = function(satzarten, sufix, alias, outerAl
 
     for (var o = 0; o < sufix.length; o++) { 
 	for (var i = 0; i < satzarten.length; i++) {
-	    if (sufix[o].match(/PSID2/) && satzarten[i].match(/SA999/)) continue;
-	    // changed AUSGLEICHSJAHR to BERICHTSJAHR, so previously selected columns have to contain BERICHTSJAHR
-	    // if (sufix[o].match(/BERICHSTJAHR/) && satzarten[i].match(/SA951/)) continue;
-	    sql += ' WHEN ' + outerAlias + satzarten[i] + '_' + sufix[o] + ' IS NOT NULL THEN '
-		+ (o > 0 ? outerAlias + satzarten[i] + "_BERICHTSJAHR || '_' || " : '')
-		+ outerAlias + satzarten[i] + '_' + sufix[o];
+	    var curSufix   = sufix[o];
+	    var curSatzart = satzarten[i];
+
+	    if (curSufix.match(/BERICHTSJAHR/) && curSatzart.match(/SA951/))
+		curSufix = curSufix.replace('BERICHTSJAHR', 'AUSGLEICHSJAHR');
+	    if (curSufix.match(/PSID2/) && curSatzart.match(/SA999/))
+		continue;
+	    
+	    sql += ' WHEN ' + outerAlias + curSatzart + '_' + curSufix + ' IS NOT NULL THEN '
+		+ (o > 0 ? outerAlias + curSatzart + '_' + (curSatzart.match(/SA951/) ? 'AUSGLEICHSJAHR' : 'BERICHTSJAHR') + " || '_' || " : '')
+		+ outerAlias + curSatzart + '_' + curSufix;
 	}
     }
 
@@ -754,7 +760,7 @@ i2b2.DaTraVExport.processItemsSingleResultTable = function() {
 	+ (berichtsjahrCase == '' ? '' : indent + ', ' + berichtsjahrCase + '<br>')
 	+ (psid2Case == '' ? '' : indent + ', ' + psid2Case + '<br>')
 	+ indent + ', ' + items.join('<br>' + indent + ', ') + '<br>'
-	+ 'FROM ' + tablespace + '.rs<br>'
+	+ 'FROM ' + tablespace + '.pat<br>'
 	+ indent + 'LEFT JOIN<br>'
 	+ indent + statement.getTablesStringLatestGroup() + '<br>'
 	+ indent + 'ON (psid = ' + i2b2.DaTraVExport.generateCaseString(satzarten, new Array('PSID', 'PSID2')) + ')' + '<br>'
