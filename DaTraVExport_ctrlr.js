@@ -314,6 +314,7 @@ i2b2.DaTraVExport.processQM = function(qm_id, outerPanelNumber) {
     var results    = i2b2.CRC.ajax.getRequestXml_fromQueryMasterId('Plugin:DaTraVExport', msg_vals);
     var queryDef   = i2b2.h.XPath(results.refXML, 'descendant::query_name/..');
     var xmlResults = [];
+    var indent     = Array(5).join('&nbsp;');
 
     if (queryDef.length == 0) {
 	throw 'processQM(): invalide query definition';
@@ -391,13 +392,13 @@ i2b2.DaTraVExport.processQM = function(qm_id, outerPanelNumber) {
 		+ 'CREATE TABLE ' + tablespace + '.temp_table AS (<br>'
 		+ 'SELECT psid, ausgleichsjahr<br>'
 		+ 'FROM (<br>' + diffVisitTables.map(
-		    function(x) { return Array(7).join('&nbsp;') + 'SELECT psid, ausgleichsjahr FROM ' + x }
-		).join('<br>' + Array(7).join('&nbsp;') + 'UNION<br>') + '<br>'
-		+ Array(6).join('&nbsp;') + ') q<br>'
-		+ Array(6).join('&nbsp;') + 'JOIN ('
+		    function(x) { return indent + 'SELECT psid, ausgleichsjahr FROM ' + x }
+		).join('<br>' + indent + indent + 'UNION<br>') + '<br>'
+		+ indent + ') q<br>'
+		+ indent + 'JOIN ('
 		+ diffVisitTables.map(
 		    function(x) { return 'SELECT psid FROM ' + x }
-		).join(') USING (psid)<br>' + Array(6).join('&nbsp;') + 'JOIN (')
+		).join(') USING (psid)<br>' + indent + 'JOIN (')
 		+ ') USING (psid)<br>' 
 		+ ');<br><br>';
 	}
@@ -446,12 +447,12 @@ i2b2.DaTraVExport.processQM = function(qm_id, outerPanelNumber) {
 	sql += '/*** ' + (i + 1) + '. Event Constraint ***/<br>'
 	    + 'DELETE FROM ' + resultTableName + '<br>'
 	    + 'WHERE psid NOT IN (<br>'
-	    + Array(7).join('&nbsp;') + 'SELECT psid<br>'
-	    + Array(7).join('&nbsp;') + 'FROM (SELECT psid, ' + firstAggOperator + '(ausgleichsjahr) AS value FROM ' + firstEventTable + ' GROUP BY psid) e1<br>'
-	    + Array(12).join('&nbsp;') + 'JOIN<br>'
-	    + Array(12).join('&nbsp;') + '(SELECT psid, ' + secondAggOperator + '(ausgleichsjahr) AS value FROM ' + secondEventTable + ' GROUP BY psid) e2<br>'
-	    + Array(12).join('&nbsp;') + 'USING (psid)<br>'
-	    + Array(7).join('&nbsp;') + 'WHERE e1.value ' + operator + ' e2.value<br>'
+	    + indent + 'SELECT psid<br>'
+	    + indent + 'FROM (SELECT psid, ' + firstAggOperator + '(ausgleichsjahr) AS value FROM ' + firstEventTable + ' GROUP BY psid) e1<br>'
+	    + indent + indent + 'JOIN<br>'
+	    + indent + indent + '(SELECT psid, ' + secondAggOperator + '(ausgleichsjahr) AS value FROM ' + secondEventTable + ' GROUP BY psid) e2<br>'
+	    + indent + indent + 'USING (psid)<br>'
+	    + indent + 'WHERE e1.value ' + operator + ' e2.value<br>'
 	    + ');<br><br>';
     }
 
@@ -627,21 +628,21 @@ i2b2.DaTraVExport.tableArrayToSQLString = function(array) {
     var sql         = '';
     var prevSatzart = '';
     var satzarten   = [];
-    var spaces      = Array(6).join('&nbsp;');
+    var indent      = Array(5).join('&nbsp;');
 
     for (var i = 0; i < array.length; i++) {
 	var curSatzart = String(array[i]).replace(/(.*?)(SA\d\d\d)(.*)/, '$2');
 	
 	if (i > 0) { // not the first element of the array
-	    sql += '<br>' + spaces + 'FULL JOIN<br>' 
-		+ spaces +  array[i] + '<br>'
-		+ spaces + 'ON (' + i2b2.DaTraVExport.generateCaseString(satzarten, new Array('PSID', 'PSID2')) 
+	    sql += '<br>' + indent + 'FULL JOIN<br>' 
+		+ indent +  array[i] + '<br>'
+		+ indent + 'ON (' + i2b2.DaTraVExport.generateCaseString(satzarten, new Array('PSID', 'PSID2')) 
 		+ ' = ' + i2b2.DaTraVExport.generateCaseString(new Array(curSatzart), new Array('PSID', 'PSID2')) 
-		+ '<br>' + spaces + Array(5).join('&nbsp;') + 'AND ' 
+		+ '<br>' + indent + indent + 'AND ' 
 	        + (curSatzart.match(/SA999/) || (satzarten.length == 1 && satzarten[0].match(/SA999/)) ?
 		   ''
 		   : i2b2.DaTraVExport.generateCaseString(satzarten, new Array('PSID2')) + ' = ' + curSatzart + '_PSID2'
-		   + '<br>' + spaces + Array(5).join('&nbsp;') + 'AND ' 
+		   + '<br>' + indent + indent + 'AND ' 
 		  )
 		+ i2b2.DaTraVExport.generateCaseString(satzarten, new Array('AUSGLEICHSJAHR')) + ' = ' + curSatzart + '_AUSGLEICHSJAHR'
 		+ ')';
@@ -742,20 +743,20 @@ i2b2.DaTraVExport.processItemsSingleResultTable = function() {
     var ausgleichsjahrCase = i2b2.DaTraVExport.generateCaseString(satzarten, new Array('AUSGLEICHSJAHR'), 'ausgleichsjahr');
     var berichtsjahrCase   = i2b2.DaTraVExport.generateCaseString(satzarten, new Array('BERICHTSJAHR'), 'berichtsjahr');
     var psid2Case          = i2b2.DaTraVExport.generateCaseString(satzarten, new Array('PSID2'), 'psid2');
-    var spaces             = Array(8).join('&nbsp;');
+    var indent             = Array(5).join('&nbsp;');
     
     return '/*** Result Table ***/<br>'
 	+ 'DROP TABLE result;<br>'
 	+ 'CREATE TABLE result AS ('
-	+ 'SELECT psid,<br>' 
-	+       spaces + ausgleichsjahrCase + ',<br>'
-	+       (berichtsjahrCase == '' ? '' : spaces + berichtsjahrCase + ',<br>')
-	+       (psid2Case == '' ? '' : spaces + psid2Case + ',<br>')
-	+       spaces + items.join(', ') + '<br>'
+	+ 'SELECT psid<br>' 
+	+ indent + ', ' + ausgleichsjahrCase + '<br>'
+	+ (berichtsjahrCase == '' ? '' : indent + ', ' + berichtsjahrCase + '<br>')
+	+ (psid2Case == '' ? '' : indent + ', ' + psid2Case + '<br>')
+	+ indent + ', ' + items.join('<br>' + indent + ', ') + '<br>'
 	+ 'FROM ' + tablespace + '.rs<br>'
-	+ Array(6).join('&nbsp;') + 'LEFT JOIN<br>'
-	+ Array(6).join('&nbsp;') + statement.getTablesStringLatestGroup() + '<br>'
-	+ Array(6).join('&nbsp;') + 'ON (psid = ' + i2b2.DaTraVExport.generateCaseString(satzarten, new Array('PSID', 'PSID2')) + ')' + '<br>'
+	+ indent + 'LEFT JOIN<br>'
+	+ indent + statement.getTablesStringLatestGroup() + '<br>'
+	+ indent + 'ON (psid = ' + i2b2.DaTraVExport.generateCaseString(satzarten, new Array('PSID', 'PSID2')) + ')' + '<br>'
 	+ ');';
 };
 
@@ -771,7 +772,7 @@ i2b2.DaTraVExport.processItemsMultiResultTables = function() {
     var toDate             = i2b2.DaTraVExport.extractDate(i2b2.DaTraVExport.model.toYear);
     var satzarten          = [];
     var sql                = '';
-    var spaces             = Array(8).join('&nbsp;');
+    var indent             = Array(5).join('&nbsp;');
 
     /*** collect required satzarten ***/
     for (var i = 0; i < items.length; i++) {
@@ -795,14 +796,14 @@ i2b2.DaTraVExport.processItemsMultiResultTables = function() {
 	    + 'DROP TABLE result_' + cur_satzart + ';<br>'
 	    + 'CREATE TABLE result_' + cur_satzart + ' AS (<br>'
 	    + 'SELECT psid<br>'
-	    + spaces + ', ' + cur_satzart + '_AUSGLEICHSJAHR<br>'
-	    + (!cur_satzart.match(/951/) ? spaces + ', ' + cur_satzart + '_BERICHTSJAHR<br>' : '')
-	    + (!cur_satzart.match(/999/) ? spaces + ', ' + cur_satzart + '_PSID2<br>' : '')
-	    + spaces + ', ' + cur_items.join('<br>' + spaces + ', ') + '<br>'
+	    + indent + ', ' + cur_satzart + '_AUSGLEICHSJAHR<br>'
+	    + (!cur_satzart.match(/951/) ? indent + ', ' + cur_satzart + '_BERICHTSJAHR<br>' : '')
+	    + (!cur_satzart.match(/999/) ? indent + ', ' + cur_satzart + '_PSID2<br>' : '')
+	    + indent + ', ' + cur_items.join('<br>' + indent + ', ') + '<br>'
 	    + 'FROM ' + tablespace + '.pat<br>'
-	    + Array(6).join('&nbsp;') + 'LEFT JOIN<br>'
-	    + Array(6).join('&nbsp;') + statement.getTablesStringLatestGroup() + '<br>'
-	    + Array(6).join('&nbsp;') + 'ON (psid = ' + i2b2.DaTraVExport.generateCaseString(new Array(cur_satzart), new Array('PSID', 'PSID2')) + ')<br>'
+	    + indent + 'LEFT JOIN<br>'
+	    + indent + statement.getTablesStringLatestGroup() + '<br>'
+	    + indent + 'ON (psid = ' + i2b2.DaTraVExport.generateCaseString(new Array(cur_satzart), new Array('PSID', 'PSID2')) + ')<br>'
 	    + ');<br><br>';
     }
 
@@ -912,6 +913,7 @@ i2b2.DaTraVExport.newStatementObj = function() {
 	    var relevantGroups = [];
 	    var tables         = [];
 	    var satzarten      = [];
+	    var indent         = Array(5).join('&nbsp;');
 	    var fromYear, toYear;
 
 	    /*** collect all itemgroups with type SAMEINSTANCENUM ***/
@@ -963,16 +965,17 @@ i2b2.DaTraVExport.newStatementObj = function() {
 	    }
 
 	    /*** generate where constraints ***/
-	    var whereConstraints = '(' 
-		+ relevantGroups.map(
+	    var whereConstraints = '(<br>' 
+		+ indent + indent + relevantGroups.map(
 		    function(x) { return x.constraintsToSQLString(); }
-		).join('<br>' + Array(7).join('&nbsp;') + ') AND (<br>' + Array(7).join('&nbsp;'))
-		+ ')';
+		).join('<br>' + indent + ') AND (<br>' + indent + indent)
+		+ '<br>'
+		+ indent + ')';
 	    
 	    return 'DROP TABLE ' + tableName + ';<br>'
 		+ 'CREATE TABLE ' + tableName + ' AS (<br>'
-		+ 'SELECT ' + i2b2.DaTraVExport.generateCaseString(satzarten, new Array('PSID', 'PSID2'), 'psid,') + '<br>'
-		+             i2b2.DaTraVExport.generateCaseString(satzarten, new Array('AUSGLEICHSJAHR'), 'ausgleichsjahr') + '<br>'
+		+ 'SELECT ' + i2b2.DaTraVExport.generateCaseString(satzarten, new Array('PSID', 'PSID2'), 'psid') + '<br>'
+		+ indent + ', ' + i2b2.DaTraVExport.generateCaseString(satzarten, new Array('AUSGLEICHSJAHR'), 'ausgleichsjahr') + '<br>'
 		+ 'FROM (SELECT * FROM ' + i2b2.DaTraVExport.tableArrayToSQLString(tables) + ') q<br>'
 		+ 'WHERE ' + whereConstraints + '<br>'
 		+ ');';
@@ -1017,21 +1020,29 @@ i2b2.DaTraVExport.newStatementObj = function() {
 		 * @return {string} SQL string
 		 */
 		constraintsToSQLString: function() {
- 	    	    var sql = this.items.map(
-			function(x) { return x.toSQLString(); }
-		    ).join('<br>' + Array(7).join('&nbsp;') + 'OR ');
-		    
-		    var satzarten = this.getSatzarten();
+		    var indent    = Array(5).join('&nbsp;'); 
+ 	    	    var satzarten = this.getSatzarten();
+		    var constraints = this.items.map(function(x) { return x.toSQLString(); });
+
+		    // var sql       = this.items.map(
+		    // 	function(x) { return x.toSQLString(); }
+		    // ).join('<br>' + indent + 'OR ');
 
 		    if (this.subQueryTables.length > 0) {
-			
-			sql += (sql ? '<br>' + Array(7).join('&nbsp;') + 'OR ' : '')
-			    + this.subQueryTables.map(
+			constraints += this.subQueryTables.map(
 			    function(x) {
 				return i2b2.DaTraVExport.generateCaseString(satzarten, new Array('PSID', 'PSID2')) + ' IN (SELECT psid FROM ' + x + ')';
 			    }
-			).join('<br>' + Array(7).join('&nbsp;') + 'OR ');
+			);
+			// sql += (sql ? '<br>' + indent + 'OR ' : '')
+			//     + this.subQueryTables.map(
+			//     function(x) {
+			// 	return i2b2.DaTraVExport.generateCaseString(satzarten, new Array('PSID', 'PSID2')) + ' IN (SELECT psid FROM ' + x + ')';
+			//     }
+			// ).join('<br>' + indent + 'OR ');
 		    }
+
+		    var sql = '';
 
 		    if (this.occurences > 1) {
 			var caseStringPsid1 = i2b2.DaTraVExport.generateCaseString(satzarten, new Array('PSID', 'PSID2'));
@@ -1039,14 +1050,21 @@ i2b2.DaTraVExport.newStatementObj = function() {
 			var caseStringAusg1 = i2b2.DaTraVExport.generateCaseString(satzarten, new Array('AUSGLEICHSJAHR'));
 			var caseStringAusg2 = i2b2.DaTraVExport.generateCaseString(satzarten, new Array('AUSGLEICHSJAHR'), null, 'q');
 
-			sql = this.occurences + ' <=<br>'
-			    + Array(7).join('&nbsp;') + '(SELECT count(*)<br>'
-			    + Array(8).join('&nbsp;') + 'FROM ' + i2b2.DaTraVExport.tableArrayToSQLString(this.tables) + '<br>'
-			    + Array(8).join('&nbsp;') + 'WHERE (<br>' 
-			    + Array(8).join('&nbsp;') +        sql + ')<br>'
-			    + Array(8).join('&nbsp;') +        'AND ' + caseStringPsid1 + ' = ' + caseStringPsid2 + '<br>'
-			    + Array(8).join('&nbsp;') +        'AND ' + caseStringAusg1 + ' = ' + caseStringAusg2 + '<br>'
-			    + Array(7).join('&nbsp;') + ')';
+			sql = this.occurences + ' <= (SELECT count(*)<br>'
+			    + indent + indent + indent + 'FROM ' + i2b2.DaTraVExport.tableArrayToSQLString(this.tables) + '<br>'
+			    + indent + indent + indent + 'WHERE (' + constraints.join('<br>' + indent + indent + indent + indent + 'OR ') + ')<br>'
+			    + indent + indent + indent + indent + 'AND ' + caseStringPsid1 + ' = ' + caseStringPsid2 + '<br>'
+			    + indent + indent + indent + indent + 'AND ' + caseStringAusg1 + ' = ' + caseStringAusg2 + '<br>'
+			    + indent + indent + indent + ')';
+			// sql = this.occurences + ' <= (<br>'
+			//     + indent + indent + 'SELECT count(*)<br>'
+			//     + indent + indent + 'FROM ' + i2b2.DaTraVExport.tableArrayToSQLString(this.tables) + '<br>'
+			//     + indent + indent + 'WHERE (' + sql + ')<br>'
+			//     + indent + indent + indent + 'AND ' + caseStringPsid1 + ' = ' + caseStringPsid2 + '<br>'
+			//     + indent + indent + indent + 'AND ' + caseStringAusg1 + ' = ' + caseStringAusg2 + '<br>'
+			//     + indent + ')';
+		    } else {
+			sql = constraints.join('<br>' + indent + 'OR ');
 		    }
 
 		    if (this.exclude == 1)
@@ -1063,6 +1081,7 @@ i2b2.DaTraVExport.newStatementObj = function() {
 		toSQLString: function() {
 		    var tablespace = i2b2.DaTraVExport.model.tablespace;
 		    var satzarten  = this.getSatzarten();
+		    var indent     = Array(5).join('&nbsp;');
 
 		    if (this.tables.length == 0 && this.subQueryTables.length == 0)
 			throw 'itemGroup.toSQLString(): no data for the group available';
@@ -1070,17 +1089,17 @@ i2b2.DaTraVExport.newStatementObj = function() {
 		    if (this.items.length == 0 && this.subQueryTables.length > 0) { // itemgroup contains only one subquery
 			var inConstraint = this.subQueryTables.map(
 			    function(x) { return 'SELECT psid FROM ' + x; }
-			).join('<br>UNION<br>');
+			).join('<br>' + indent + 'UNION<br>' + indent);
 
 			return 'DROP TABLE ' + tablespace + '.' + this.getTempTableName() + ';<br>'
 			    + 'CREATE TABLE ' + tablespace + '.' + this.getTempTableName() + ' AS (<br>'
 			    + (this.exclude == 1 ?
-			       'SELECT ' + i2b2.DaTraVExport.generateCaseString(satzarten, new Array('PSID', 'PSID2'), 'psid') + ',<br>'
+			       'SELECT ' + i2b2.DaTraVExport.generateCaseString(satzarten, new Array('PSID', 'PSID2'), 'psid') + '<br>'
 			       + (satzarten.length == 1 && satzarten[0].match(/999/) ?
 				  ''
-				  : Array(8).join('&nbsp;') + i2b2.DaTraVExport.generateCaseString(satzarten, new Array('PSID2'), 'psid2') + ',<br>'
+				  : indent + ', ' + i2b2.DaTraVExport.generateCaseString(satzarten, new Array('PSID2'), 'psid2') + '<br>'
 				 )
-			       + Array(8).join('&nbsp;') + i2b2.DaTraVExport.generateCaseString(satzarten, new Array('AUSGLEICHSJAHR'), 'ausgleichsjahr') + '<br>'
+			       + indent + ', ' + i2b2.DaTraVExport.generateCaseString(satzarten, new Array('AUSGLEICHSJAHR'), 'ausgleichsjahr') + '<br>'
 			       + 'FROM ' + i2b2.DaTraVExport.tableArrayToSQLString(this.tables) + '<br>'
 			       + 'WHERE ' + i2b2.DaTraVExport.generateCaseString(satzarten, new Array('PSID', 'PSID2')) + ' NOT IN (' + inConstraint + ')'
 			       : this.subQueryTables.map(
@@ -1092,12 +1111,12 @@ i2b2.DaTraVExport.newStatementObj = function() {
 		    
 		    return 'DROP TABLE ' + tablespace + '.' + this.getTempTableName() + ';<br>'
 			+ 'CREATE TABLE ' + tablespace + '.' + this.getTempTableName() + ' AS (<br>'
-			+ 'SELECT ' + i2b2.DaTraVExport.generateCaseString(satzarten, new Array('PSID', 'PSID2'), 'psid') + ',<br>' 
+			+ 'SELECT ' + i2b2.DaTraVExport.generateCaseString(satzarten, new Array('PSID', 'PSID2'), 'psid') + '<br>' 
 		        + (satzarten.length == 1 && satzarten[0].match(/999/) ?
 			   '' 
-			   : Array(8).join('&nbsp;') + i2b2.DaTraVExport.generateCaseString(satzarten, new Array('PSID2'), 'psid2') + ',<br>'
+			   : indent + ', ' + i2b2.DaTraVExport.generateCaseString(satzarten, new Array('PSID2'), 'psid2') + '<br>'
 			  ) // select psid2 if there are multiple satzarten or satzart != 999
-			+ Array(8).join('&nbsp;') + i2b2.DaTraVExport.generateCaseString(satzarten, new Array('AUSGLEICHSJAHR'), 'ausgleichsjahr') + '<br>'
+			+ indent + ', ' + i2b2.DaTraVExport.generateCaseString(satzarten, new Array('AUSGLEICHSJAHR'), 'ausgleichsjahr') + '<br>'
 			+ 'FROM (SELECT * FROM ' + i2b2.DaTraVExport.tableArrayToSQLString(this.tables) + ') q<br>'
 			+ 'WHERE ' + this.constraintsToSQLString() + '<br>);';
 		},
