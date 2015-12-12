@@ -404,7 +404,7 @@ i2b2.ExportSQL.processQM = function(qm_id, outerPanelNumber) {
 
 	sql += '/*** ' + (eventId ? 'Event ' + eventId : 'Population') + ' ***/<br>'
 	    + (subQuerySql != '' ? subQuerySql + '<br><br>' : '')
-	    + statement.toString() +'<br><br>'
+	    + statement.toSQLString() +'<br><br>'
 	    + tempSql
 	    + 'DROP TABLE ' + resultTableName + (eventId ? '_' + eventId : '') + ';<br>'
 	    + 'CREATE TABLE ' + resultTableName + (eventId ? '_' + eventId : '') + ' AS (<br>'
@@ -623,7 +623,7 @@ i2b2.ExportSQL.extractDate = function(string) {
  *
  * @return {string} SQL
  */
-i2b2.ExportSQL.tableArrayToString = function(array) {
+i2b2.ExportSQL.tableArrayToSQLString = function(array) {
     var sql         = '';
     var prevSatzart = '';
     var satzarten   = [];
@@ -834,7 +834,7 @@ i2b2.ExportSQL.newStatementObj = function() {
 	 *
 	 * @return {string} SQL statement
 	 */
-	toString: function() {
+	toSQLString: function() {
 	    var sql = [];
 	    var mergedSameInstances = this.mergeSqlForItemGroupsWithSameInstanceNum();
 
@@ -842,7 +842,7 @@ i2b2.ExportSQL.newStatementObj = function() {
 
 	    for (var i = 0; i < this.itemGroups.length; i++) {
 		if (this.itemGroups[i].getTiming() != 'SAMEINSTANCENUM')
-		    sql.push(this.itemGroups[i].toString());
+		    sql.push(this.itemGroups[i].toSQLString());
 	    }
 	    return sql.join('<br><br>');
 	},
@@ -855,7 +855,7 @@ i2b2.ExportSQL.newStatementObj = function() {
 	getTablesStringLatestGroup: function() {
 	    if (!this.getLatestItemGroup())
 		throw 'statement.getTablesStringLatestGroup(): no itemGroups in statement';
-	    return i2b2.ExportSQL.tableArrayToString(
+	    return i2b2.ExportSQL.tableArrayToSQLString(
 		this.getLatestItemGroup().getTables()
 	    );
 	},
@@ -965,7 +965,7 @@ i2b2.ExportSQL.newStatementObj = function() {
 	    /*** generate where constraints ***/
 	    var whereConstraints = '(' 
 		+ relevantGroups.map(
-		    function(x) { return x.constraintsToString(); }
+		    function(x) { return x.constraintsToSQLString(); }
 		).join('<br>' + Array(7).join('&nbsp;') + ') AND (<br>' + Array(7).join('&nbsp;'))
 		+ ')';
 	    
@@ -973,7 +973,7 @@ i2b2.ExportSQL.newStatementObj = function() {
 		+ 'CREATE TABLE ' + tableName + ' AS (<br>'
 		+ 'SELECT ' + i2b2.ExportSQL.generateCaseString(satzarten, new Array('PSID', 'PSID2'), 'psid,') + '<br>'
 		+             i2b2.ExportSQL.generateCaseString(satzarten, new Array('AUSGLEICHSJAHR'), 'ausgleichsjahr') + '<br>'
-		+ 'FROM (SELECT * FROM ' + i2b2.ExportSQL.tableArrayToString(tables) + ') q<br>'
+		+ 'FROM (SELECT * FROM ' + i2b2.ExportSQL.tableArrayToSQLString(tables) + ') q<br>'
 		+ 'WHERE ' + whereConstraints + '<br>'
 		+ ');';
 	},
@@ -1016,9 +1016,9 @@ i2b2.ExportSQL.newStatementObj = function() {
 		 *
 		 * @return {string} SQL string
 		 */
-		constraintsToString: function() {
+		constraintsToSQLString: function() {
  	    	    var sql = this.items.map(
-			function(x) { return x.toString(); }
+			function(x) { return x.toSQLString(); }
 		    ).join('<br>' + Array(7).join('&nbsp;') + 'OR ');
 		    
 		    var satzarten = this.getSatzarten();
@@ -1041,7 +1041,7 @@ i2b2.ExportSQL.newStatementObj = function() {
 
 			sql = this.occurences + ' <=<br>'
 			    + Array(7).join('&nbsp;') + '(SELECT count(*)<br>'
-			    + Array(8).join('&nbsp;') + 'FROM ' + i2b2.ExportSQL.tableArrayToString(this.tables) + '<br>'
+			    + Array(8).join('&nbsp;') + 'FROM ' + i2b2.ExportSQL.tableArrayToSQLString(this.tables) + '<br>'
 			    + Array(8).join('&nbsp;') + 'WHERE (<br>' 
 			    + Array(8).join('&nbsp;') +        sql + ')<br>'
 			    + Array(8).join('&nbsp;') +        'AND ' + caseStringPsid1 + ' = ' + caseStringPsid2 + '<br>'
@@ -1060,12 +1060,12 @@ i2b2.ExportSQL.newStatementObj = function() {
 		 *
 		 * @return {string} create statement
 		 */
-		toString: function() {
+		toSQLString: function() {
 		    var tablespace = i2b2.ExportSQL.model.tablespace;
 		    var satzarten  = this.getSatzarten();
 
 		    if (this.tables.length == 0 && this.subQueryTables.length == 0)
-			throw 'itemGroup.toString(): no data for the group available';
+			throw 'itemGroup.toSQLString(): no data for the group available';
 		    
 		    if (this.items.length == 0 && this.subQueryTables.length > 0) { // itemgroup contains only one subquery
 			var inConstraint = this.subQueryTables.map(
@@ -1081,7 +1081,7 @@ i2b2.ExportSQL.newStatementObj = function() {
 				  : Array(8).join('&nbsp;') + i2b2.ExportSQL.generateCaseString(satzarten, new Array('PSID2'), 'psid2') + ',<br>'
 				 )
 			       + Array(8).join('&nbsp;') + i2b2.ExportSQL.generateCaseString(satzarten, new Array('AUSGLEICHSJAHR'), 'ausgleichsjahr') + '<br>'
-			       + 'FROM ' + i2b2.ExportSQL.tableArrayToString(this.tables) + '<br>'
+			       + 'FROM ' + i2b2.ExportSQL.tableArrayToSQLString(this.tables) + '<br>'
 			       + 'WHERE ' + i2b2.ExportSQL.generateCaseString(satzarten, new Array('PSID', 'PSID2')) + ' NOT IN (' + inConstraint + ')'
 			       : this.subQueryTables.map(
 				   function(x) { return 'SELECT psid, ausgleichsjahr FROM ' + x; }
@@ -1098,8 +1098,8 @@ i2b2.ExportSQL.newStatementObj = function() {
 			   : Array(8).join('&nbsp;') + i2b2.ExportSQL.generateCaseString(satzarten, new Array('PSID2'), 'psid2') + ',<br>'
 			  ) // select psid2 if there are multiple satzarten or satzart != 999
 			+ Array(8).join('&nbsp;') + i2b2.ExportSQL.generateCaseString(satzarten, new Array('AUSGLEICHSJAHR'), 'ausgleichsjahr') + '<br>'
-			+ 'FROM (SELECT * FROM ' + i2b2.ExportSQL.tableArrayToString(this.tables) + ') q<br>'
-			+ 'WHERE ' + this.constraintsToString() + '<br>);';
+			+ 'FROM (SELECT * FROM ' + i2b2.ExportSQL.tableArrayToSQLString(this.tables) + ') q<br>'
+			+ 'WHERE ' + this.constraintsToSQLString() + '<br>);';
 		},
 
 		/**
@@ -1375,7 +1375,7 @@ i2b2.ExportSQL.newStatementObj = function() {
 			    case 'AGS'      : return this.generateAGSConstraint(catalogue, value);
 			    case 'BSNR'     : return this.generateBSNRConstraint(catalogue, value);
 			    case 'PZN'      : return this.generatePZNConstraint(catalogue, value);
-			    default         : throw 'item.toString(): ' + catalogue + ' in query or subquery is not yet supported';
+			    default         : throw 'item.toSQLString(): ' + catalogue + ' in query or subquery is not yet supported';
 			    }
 			},
 
@@ -1384,10 +1384,10 @@ i2b2.ExportSQL.newStatementObj = function() {
 			 *
 			 * @return {string} SQL string build from dimdiColumn, operator and value
 			 */
- 	    		toString: function() {
-			    if (!this.dimdiColumn) throw 'item.toString(): dimdiColumn is null';
-			    if (!this.item_key) throw 'item.toString(): item_key is null';
-			    if (!this.icon) throw 'item.toString(): icon is null';
+ 	    		toSQLString: function() {
+			    if (!this.dimdiColumn) throw 'item.toSQLString(): dimdiColumn is null';
+			    if (!this.item_key) throw 'item.toSQLString(): item_key is null';
+			    if (!this.icon) throw 'item.toSQLString(): icon is null';
 
 			    var sql        = '';
 			    var constraint = '';
@@ -1397,7 +1397,7 @@ i2b2.ExportSQL.newStatementObj = function() {
 			    var satzart    = 'SA' + satzartNr;
 			    var value      = this.item_key.replace(/(.*?\\)([^\\]*?)(\\$)/, '$2');
 
-			    if (isNaN(satzartNr)) throw 'item.toString(): dimdiColumn does not contain a satzartNr';
+			    if (isNaN(satzartNr)) throw 'item.toSQLString(): dimdiColumn does not contain a satzartNr';
 
 			    if (value != this.dimdiColumn) // catalogue
 				constraint = this.generateCatalogueConstraint(catalogue, value);
