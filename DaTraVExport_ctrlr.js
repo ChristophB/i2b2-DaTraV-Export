@@ -350,7 +350,7 @@ i2b2.DaTraVExport.processQM = function(qm_id, outerPanelNumber) {
 	panelResultTables = i2b2.DaTraVExport.uniqueElements(panelResultTables);
 
 	if (eventId) { //current query is an event
-	    createSql += 'SELECT psid, ausgleichsjahr FROM ' + panelResultTables[0];
+	    createSql += 'SELECT psid, berichtsjahr FROM ' + panelResultTables[0];
 	} else {
 	    for (var j = 0; j < panelResultTables.length; j++) {
 		var curResultTable = panelResultTables[j];
@@ -448,9 +448,9 @@ i2b2.DaTraVExport.processQM = function(qm_id, outerPanelNumber) {
 	    + 'DELETE FROM ' + resultTableName + '<br>'
 	    + 'WHERE psid NOT IN (<br>'
 	    + indent + 'SELECT psid<br>'
-	    + indent + 'FROM (SELECT psid, ' + firstAggOperator + '(ausgleichsjahr) AS value FROM ' + firstEventTable + ' GROUP BY psid) e1<br>'
+	    + indent + 'FROM (SELECT psid, ' + firstAggOperator + '(berichtsjahr) AS value FROM ' + firstEventTable + ' GROUP BY psid) e1<br>'
 	    + indent + indent + 'JOIN<br>'
-	    + indent + indent + '(SELECT psid, ' + secondAggOperator + '(ausgleichsjahr) AS value FROM ' + secondEventTable + ' GROUP BY psid) e2<br>'
+	    + indent + indent + '(SELECT psid, ' + secondAggOperator + '(berichtsjahr) AS value FROM ' + secondEventTable + ' GROUP BY psid) e2<br>'
 	    + indent + indent + 'USING (psid)<br>'
 	    + indent + 'WHERE e1.value ' + operator + ' e2.value<br>'
 	    + ');<br><br>';
@@ -1269,7 +1269,7 @@ i2b2.DaTraVExport.newStatementObj = function() {
 		 * returns the dimdi db table and tablespace, which contains the given dimdi column and year
 		 *
 		 * @param {string} dimdiColumn - valid column name of the dimdi database
-		 * @param {integer} year - Ausgleichsjahr
+		 * @param {integer} year - Berichtsjahr
 		 *
 		 * @return {string} table name with tablespace
 		 */
@@ -1284,7 +1284,7 @@ i2b2.DaTraVExport.newStatementObj = function() {
 		 * returns the dimdi db table, which contains the given dimdi column and year
 		 *
 		 * @param {string} dimdiColumn - valid column name of the dimdi database
-		 * @param {integer} year - Ausgleichsjahr
+		 * @param {integer} year - Berichtsjahr
 		 *
 		 * @return {string} table name
 		 */
