@@ -5,7 +5,7 @@ i2b2.DaTraVExport.Init = function(loadedDiv) {
     var op_trgt        = { dropTarget: true };
     var cfgObj         = { activeIndex: 0 };
     var endYear        = new Date().getFullYear();
-    i2b2.DaTraVExport.model.minStartYear = 2009;
+    i2b2.DaTraVExport.model.minStartYear = 2008;
 
     var counter        = 1;
     var selectFromYear = document.getElementById('fromYear');
@@ -644,7 +644,7 @@ i2b2.DaTraVExport.tableArrayToSQLString = function(array) {
 		   : i2b2.DaTraVExport.generateCaseString(satzarten, new Array('PSID2')) + ' = ' + curSatzart + '_PSID2'
 		   + '<br>' + indent + indent + 'AND ' 
 		  )
-		+ i2b2.DaTraVExport.generateCaseString(satzarten, new Array('AUSGLEICHSJAHR')) + ' = ' + curSatzart + '_AUSGLEICHSJAHR'
+		+ i2b2.DaTraVExport.generateCaseString(satzarten, new Array('BERICHTSJAHR')) + ' = ' + curSatzart + '_BERICHTSJAHR' // workarround for SA951 + BERICHTSJAHR needed
 		+ ')';
 	} else { // first element
 	    sql += array[i];
@@ -748,7 +748,7 @@ i2b2.DaTraVExport.processItemsSingleResultTable = function() {
     
     return '/*** Result Table ***/<br>'
 	+ 'DROP TABLE ' + tablespace + '.result;<br>'
-	+ 'CREATE TABLE ' + tablespace + '.result AS ('
+	+ 'CREATE TABLE ' + tablespace + '.result AS (<br>'
 	+ 'SELECT psid<br>' 
 	+ indent + ', ' + ausgleichsjahrCase + '<br>'
 	+ (berichtsjahrCase == '' ? '' : indent + ', ' + berichtsjahrCase + '<br>')
@@ -1048,22 +1048,15 @@ i2b2.DaTraVExport.newStatementObj = function() {
 		    if (this.occurences > 1) {
 			var caseStringPsid1 = i2b2.DaTraVExport.generateCaseString(satzarten, new Array('PSID', 'PSID2'));
 			var caseStringPsid2 = i2b2.DaTraVExport.generateCaseString(satzarten, new Array('q.PSID', 'q.PSID2'), null, 'q');
-			var caseStringAusg1 = i2b2.DaTraVExport.generateCaseString(satzarten, new Array('AUSGLEICHSJAHR'));
-			var caseStringAusg2 = i2b2.DaTraVExport.generateCaseString(satzarten, new Array('AUSGLEICHSJAHR'), null, 'q');
+			var caseStringBeri1 = i2b2.DaTraVExport.generateCaseString(satzarten, new Array('BERICHTSJAHR'));
+			var caseStringBeri2 = i2b2.DaTraVExport.generateCaseString(satzarten, new Array('BERICHTSJAHR'), null, 'q');
 
 			sql = this.occurences + ' <= (SELECT count(*)<br>'
 			    + indent + indent + indent + 'FROM ' + i2b2.DaTraVExport.tableArrayToSQLString(this.tables) + '<br>'
 			    + indent + indent + indent + 'WHERE (' + constraints.join('<br>' + indent + indent + indent + indent + 'OR ') + ')<br>'
 			    + indent + indent + indent + indent + 'AND ' + caseStringPsid1 + ' = ' + caseStringPsid2 + '<br>'
-			    + indent + indent + indent + indent + 'AND ' + caseStringAusg1 + ' = ' + caseStringAusg2 + '<br>'
+			    + indent + indent + indent + indent + 'AND ' + caseStringBeri1 + ' = ' + caseStringBeri2 + '<br>'
 			    + indent + indent + indent + ')';
-			// sql = this.occurences + ' <= (<br>'
-			//     + indent + indent + 'SELECT count(*)<br>'
-			//     + indent + indent + 'FROM ' + i2b2.DaTraVExport.tableArrayToSQLString(this.tables) + '<br>'
-			//     + indent + indent + 'WHERE (' + sql + ')<br>'
-			//     + indent + indent + indent + 'AND ' + caseStringPsid1 + ' = ' + caseStringPsid2 + '<br>'
-			//     + indent + indent + indent + 'AND ' + caseStringAusg1 + ' = ' + caseStringAusg2 + '<br>'
-			//     + indent + ')';
 		    } else {
 			sql = constraints.join('<br>' + indent + 'OR ');
 		    }
@@ -1100,11 +1093,11 @@ i2b2.DaTraVExport.newStatementObj = function() {
 				  ''
 				  : indent + ', ' + i2b2.DaTraVExport.generateCaseString(satzarten, new Array('PSID2'), 'psid2') + '<br>'
 				 )
-			       + indent + ', ' + i2b2.DaTraVExport.generateCaseString(satzarten, new Array('AUSGLEICHSJAHR'), 'ausgleichsjahr') + '<br>'
+			       + indent + ', ' + i2b2.DaTraVExport.generateCaseString(satzarten, new Array('BERICHTSJAHR'), 'berichtsjahr') + '<br>'
 			       + 'FROM ' + i2b2.DaTraVExport.tableArrayToSQLString(this.tables) + '<br>'
 			       + 'WHERE ' + i2b2.DaTraVExport.generateCaseString(satzarten, new Array('PSID', 'PSID2')) + ' NOT IN (' + inConstraint + ')'
 			       : this.subQueryTables.map(
-				   function(x) { return 'SELECT psid, ausgleichsjahr FROM ' + x; }
+				   function(x) { return 'SELECT psid, berichtsjahr FROM ' + x; }
 			       ).join('<br>UNION<br>')
 			      )
 			    + '<br>);';
@@ -1117,7 +1110,7 @@ i2b2.DaTraVExport.newStatementObj = function() {
 			   '' 
 			   : indent + ', ' + i2b2.DaTraVExport.generateCaseString(satzarten, new Array('PSID2'), 'psid2') + '<br>'
 			  ) // select psid2 if there are multiple satzarten or satzart != 999
-			+ indent + ', ' + i2b2.DaTraVExport.generateCaseString(satzarten, new Array('AUSGLEICHSJAHR'), 'ausgleichsjahr') + '<br>'
+			+ indent + ', ' + i2b2.DaTraVExport.generateCaseString(satzarten, new Array('BERICHTSJAHR'), 'berichtsjahr') + '<br>'
 			+ 'FROM (SELECT * FROM ' + i2b2.DaTraVExport.tableArrayToSQLString(this.tables) + ') q<br>'
 			+ 'WHERE ' + this.constraintsToSQLString() + '<br>);';
 		},
@@ -1277,12 +1270,15 @@ i2b2.DaTraVExport.newStatementObj = function() {
  		extractTableWithTablespace: function(dimdiColumn, year) {
 		    if (!dimdiColumn) throw 'itemGroup.extractTableWithTablespace(): parameter dimdiColumn is null';
 		    if (!year) throw 'itemGroup.extractTableWithTablespace(): parameter year is null';
-		    
+
  		    return i2b2.DaTraVExport.model.tablespace + '.' + this.extractTable(dimdiColumn, year);
  		},
 
 		/**
 		 * returns the dimdi db table, which contains the given dimdi column and year
+		 * the year is set depending on the SA number:
+		 * SA152, SA153, SA451, SA551 and SA651 -> Ausgleichsjahr = Berichtsjahr + 1
+		 * SA151, SA751, SA951 and SA999 -> Ausgleichsjahr = Berichtsjahr
 		 *
 		 * @param {string} dimdiColumn - valid column name of the dimdi database
 		 * @param {integer} year - Berichtsjahr
@@ -1296,6 +1292,9 @@ i2b2.DaTraVExport.newStatementObj = function() {
 		    var satzartNr = dimdiColumn.replace(/(SA)(\d\d\d)(.*)/, '$2');
 
 		    if (isNaN(satzartNr)) throw 'itemGroup.extractTable(): dimdiColumn does not contain a satzartNr';
+
+		    if (['152', '153', '451', '551', '651'].indexOf(satzartNr) != -1)
+			year++;
 
 		    return 'V' + year + 'SA' + satzartNr;
 		},
