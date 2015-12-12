@@ -753,7 +753,7 @@ i2b2.DaTraVExport.processItemsSingleResultTable = function() {
 	+ (berichtsjahrCase == '' ? '' : indent + ', ' + berichtsjahrCase + '<br>')
 	+ (psid2Case == '' ? '' : indent + ', ' + psid2Case + '<br>')
 	+ indent + ', ' + items.join('<br>' + indent + ', ') + '<br>'
-	+ 'FROM ' + tablespace + '.rs<br>'
+	+ 'FROM ' + tablespace + '.pat<br>'
 	+ indent + 'LEFT JOIN<br>'
 	+ indent + statement.getTablesStringLatestGroup() + '<br>'
 	+ indent + 'ON (psid = ' + i2b2.DaTraVExport.generateCaseString(satzarten, new Array('PSID', 'PSID2')) + ')' + '<br>'
