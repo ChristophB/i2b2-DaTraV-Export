@@ -1335,7 +1335,7 @@ i2b2.DaTraVExport.newStatementObj = function() {
 				return this.dimdiColumn + ' IS NOT NULL';
 			    else { // folder or leaf
 				return 'CAST (' + this.dimdiColumn + ' AS Varchar(5))'
-				    + " LIKE '" + parseInt(value) + "%'";
+				    + " LIKE '" + value + "%'";
 			    }
 			},
 
