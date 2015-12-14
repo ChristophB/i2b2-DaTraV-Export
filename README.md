@@ -9,4 +9,4 @@ A plugin to export the SQL code from a previously executed query. The SQL code i
     forceDir: "cells/plugins"
   },
 
-- clone the repository in a folder "ExportSQL" in "/var/www/html/webclient/js-i2b2/cells/plugins/example"
+- clone the repository in a folder "ExportSQL" in "/var/www/html/webclient/js-i2b2/cells/plugins"
