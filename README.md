@@ -6,7 +6,7 @@ A plugin to export the SQL code from a previously executed query. The SQL code i
   { code: "ExportSQL",
     forceLoading: true,
     forceConfigMsg: { params: [] },
-    forceDir: "cells/plugins/examples"
+    forceDir: "cells/plugins"
   },
 
 - clone the repository in a folder "ExportSQL" in "/var/www/html/webclient/js-i2b2/cells/plugins/example"
