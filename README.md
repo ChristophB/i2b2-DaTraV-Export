@@ -3,10 +3,10 @@ A plugin to export the SQL code from a previously executed query. The SQL code i
 
 # How to install:
 - add the following to the "i2b2_loader.js" usually in the folder "/var/www/html/webclient/js-i2b2":
-  { code: "DaTraVExport",
+  { code: "DaTraV-Export",
     forceLoading: true,
     forceConfigMsg: { params: [] },
     forceDir: "cells/plugins"
   },
 
-- clone the repository in a folder "DaTraVExport" in "/var/www/html/webclient/js-i2b2/cells/plugins"
+- clone the repository in a folder "DaTraV-Export" in "/var/www/html/webclient/js-i2b2/cells/plugins"
