@@ -1,0 +1,77 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+
+<body>
+	<div id="DaTraVExport-mainDiv">
+		<div id="DaTraVExport-TABS" class="yui-navset">
+			<ul class="yui-nav">
+				<li id="DaTraVExport-TAB0" class="selected"><a href="#DaTraVExport-TAB0"><em>Generate SQL</em></a></li>
+				<li id="DaTraVExport-TAB1"><a href="#DaTraVExport-TAB1"><em>Plugin Help</em></a></li>
+			</ul>
+			<div class="yui-content" id="DaTraVExport-CONTENT">
+				<!--tab1-->
+				<div>
+					<div class="DaTraVExport-MainContent">
+						<div class="DaTraVExport-MainContentPad">
+							<div class="elementGroup">
+								<div class="bar">
+									<div class="droptrgtlbl">i2b2 Query:</div>
+									<div class="droptrgt SDX-PRS" id="DaTraVExport-QMDROP">Drop a query object here</div>
+									<div class="yearSelects">
+										<div class="droptrgtlbl">From year:</div>
+										<select class="selectYear" id="fromYear" onchange="i2b2.DaTraVExport.setYear();">
+											<option>---</option>
+		      					</select>
+										<div class="droptrgtlbl">To year:</div>
+										<select class="selectYear" id="toYear" onchange="i2b2.DaTraVExport.setYear();">
+											<option>---</option>
+		      					</select>
+									</div>
+								</div>
+								<div class="droptrgt items" style="overflow:auto; height:200px; width:50%; background:white;" id="DaTraVExport-IDROP">Drop concepts here</div>
+								<div class="messagePanel" id="messagePanel"></div>
+								<div class="elementGroupFooter">
+									<div class="generateBox"><a href="JavaScript:i2b2.DaTraVExport.reset()"><span id="resetBoxText">Reset</span></a></div>
+									<div class="generateBox"><a href="JavaScript:i2b2.DaTraVExport.getResults()"><span id="generateBoxText">Generate SQL</span></a></div>
+									<input type="checkbox" id="multiResultTable" onchange="i2b2.DaTraVExport.setmultiResultTable();">Separate tables per Satzart
+								</div>
+							</div>
+							<br>
+							<div class="results-finished" id="results" style="display:none;">
+								<div id="DaTraVExport-StatementBox" class="statementBox"></div>
+								<br>
+								<div class="generateBox" style="margin-top:-10px;width:auto;padding:0px 4px 0px 4px;">
+									<a href="JavaScript:i2b2.DaTraVExport.copyToClipboard()"><span id="clipboardBoxText">Copy to Clipboard</span></a>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<!--tab2-->
+				<div>
+					<div class="DaTraVExport-MainContent">
+						<div class="DaTraVExport-MainContentPad">
+							<h1>DaTraV-Export</h1>
+							<hr size="1" noshade>
+							<h2>Instructions</h2>
+							Navigate to the "Generate SQL" tab. Drag and drop an i2b2 query, build up from DaTraV concepts, onto the input box. This
+							query should specify the patient set you are interested in. The query is still valid, if it contains subqueries.<br>
+							Next, you have to specify a start (and end) Berichtsjahr, to restrict the resulting SQL statement on respective data
+							sets. If a group of the dropped query or its subqueries does not contain dates, the values for start and end Berichtsjahr
+							will be used instead.<br>
+							Finally you can drag and drop some concepts into the left container. All selected concepts
+							will be selected by the generated SQL statement.<br>
+							Click on "Generate" to get your resulting SQL statement.
+							<h2>About Us</h2>
+							This plugin was created by Christoph Beger as part of a master thesis at the University of Leipzig.
+							<h2>Terms of Use</h2>
+							---
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+
+</html>
