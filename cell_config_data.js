@@ -5,8 +5,8 @@
 	css:[ "vwDaTraVExport.css" ],
 	config: {
 		// additional configuration variables that are set by the system
-		short_name: "DaTraV-Export",
-		name: "DaTraV-Export",
+		short_name: "DaTraV-Export v1.01",
+		name: "DaTraV-Export v1.01",
 		description: "This plugin generates and exports the Oracle-SQL statement, valid for the database structure of the DaTraV database.",
 		category: ["celless","plugin","examples"],
 		plugin: {
